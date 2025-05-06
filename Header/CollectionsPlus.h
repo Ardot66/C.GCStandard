@@ -3,17 +3,16 @@
 
 #include <stdint.h>
 
-#define M_ListType(type) List_ ## type
-#define ListDeclare(type) typedef struct M_ListType(type) {type *V; size_t Length; size_t Count;} M_ListType(type);
-#define List(type) M_ListType(type)
+#define List(typeName) List_ ## typeName
+#define ListDeclare(type, typeName) typedef struct List(typeName) {type *V; size_t Length; size_t Count;} List(typeName)
 
-ListDeclare(void);
+ListDeclare(void, void);
 int ListResizeGeneric(List(void) *list, const size_t newLength, const size_t elemSize);
 int ListAddGeneric(List(void) *list, const void *value, const size_t elemSize);
 int ListInsertGeneric(List(void) *list, const void *value, const size_t index, const size_t elemSize);
 void ListRemoveAtGeneric(List(void) *list, const size_t index, const size_t elemSize);
 int ListInitGeneric(List(void) *list, const size_t length, const size_t elemSize);
-int ListClearGeneric(List(void) *list, const size_t elemSize);
+void ListClearGeneric(List(void) *list, const size_t elemSize);
 
 #define M_ListGenericParams(list, ...) (List(void) *)list, ## __VA_ARGS__, sizeof(*(list)->V)
 #define ListAdd(list, value) ListAddGeneric(M_ListGenericParams(list, value))

@@ -1,6 +1,6 @@
 SHELL = cmd
 
-DEPEND = 
+DEPEND = $() Try
 BIN = Bin
 HEADER = Header
 SOURCE = Source/*
@@ -17,7 +17,7 @@ All: $(DLL) $(TESTS_EXE)
 	$(TESTS_EXE)
 
 $(DLL): $(SOURCE) $(HEADERS_WILDCARD)/*
-	gcc -fPIC -shared $(SOURCE) $(HEADERS) -o $(DLL)
+	gcc -fPIC -shared $(SOURCE) $(HEADERS) -L$(BIN) $(subst $() ,-l,$(DEPEND)) -o $(DLL)
 
 $(TESTS_EXE): $(DLL) $(TESTS) $(HEADERS_WILDCARD)/*
 	gcc $(TESTS) $(HEADERS) -L$(BIN) -l$(NAME) -o $(TESTS_EXE)

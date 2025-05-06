@@ -1,15 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "CollectionsPlus.h"
-
-ListDeclare(int);
+#include "Try.h"
 
 int ListResizeGeneric(List(void) *list, const size_t newLength, const size_t elemSize)
 {
-    List(void) *temp = realloc(list->V, newLength * elemSize);
-
-    if(temp == NULL)
-        return errno;
+    PrintStackTrace();
+    List(void) *temp;
+    Try((temp = realloc(list->V, newLength * elemSize)) == NULL, -1);
 
     list->V = temp;
     list->Length = newLength;
@@ -31,22 +29,17 @@ void ListRemoveAtGeneric(List(void) *list, const size_t index, const size_t elem
 int ListAddGeneric(List(void) *list, const void *value, const size_t elemSize)
 {
     if(list->Count >= list->Length)
-    {   
-        int err;
-        if(err = ListResizeGeneric(list, list->Length * 2 + 1, elemSize)) return err;
-    }
+        Try(ListResizeGeneric(list, list->Length * 2 + 1, elemSize), -1);
 
     memcpy((char *)list->V + elemSize * list->Count, value, elemSize);
     list->Count++;
+    return 0;
 }
 
 int ListInsertGeneric(List(void) *list, const void *value, const size_t index, const size_t elemSize)
 {
     if(list->Count >= list->Length)
-    {   
-        int err;
-        if(err = ListResizeGeneric(list, list->Length * 2 + 1, elemSize)) return err;
-    }
+        Try(ListResizeGeneric(list, list->Length * 2 + 1, elemSize), -1);
 
     memmove(
         (char *)list->V + (index + 1) * elemSize,
@@ -60,20 +53,19 @@ int ListInsertGeneric(List(void) *list, const void *value, const size_t index, c
     );
 
     list->Count++;
+    return 0;
 }
 
 int ListInitGeneric(List(void) *list, const size_t length, const size_t elemSize)
 {
-    list->V = malloc(length * elemSize);
-
-    if(list->V == NULL)
-        return errno;
+    Try((list->V = malloc(length * elemSize)) == NULL, -1);
 
     list->Length = length;
     list->Count = 0;
+    return 0;
 }
 
-int ListClearGeneric(List(void) *list, const size_t elemSize)
+void ListClearGeneric(List(void) *list, const size_t elemSize)
 {
     list->Count = 0;
 }

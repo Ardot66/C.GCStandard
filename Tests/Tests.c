@@ -1,9 +1,11 @@
 // #define TESTING_UTILITIES_VERBOSE
 
+#include <error.h>
 #include "TestingUtilities.h" 
 #include "CollectionsPlus.h"
+#include "Try.h"
 
-ListDeclare(int);
+ListDeclare(int, int);
 
 int TestList()
 {
