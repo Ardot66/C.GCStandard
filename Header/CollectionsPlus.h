@@ -3,18 +3,18 @@
 
 #include <stdint.h>
 
-#define List(typeName) List_ ## typeName
-#define ListDeclare(type, typeName) typedef struct List(typeName) {type *V; size_t Length; size_t Count;} List(typeName)
+#define List(type, typeName) struct List ## typeName {type *V; size_t Length; size_t Count;}
 
-ListDeclare(void, void);
-int ListResizeGeneric(List(void) *list, const size_t newLength, const size_t elemSize);
-int ListAddGeneric(List(void) *list, const void *value, const size_t elemSize);
-int ListInsertGeneric(List(void) *list, const void *value, const size_t index, const size_t elemSize);
-void ListRemoveAtGeneric(List(void) *list, const size_t index, const size_t elemSize);
-int ListInitGeneric(List(void) *list, const size_t length, const size_t elemSize);
-void ListClearGeneric(List(void) *list, const size_t elemSize);
+typedef List(void, void) ListGeneric;
 
-#define M_ListGenericParams(list, ...) (List(void) *)list, ## __VA_ARGS__, sizeof(*(list)->V)
+int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize);
+int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize);
+int ListInsertGeneric(ListGeneric *list, const void *value, const size_t index, const size_t elemSize);
+void ListRemoveAtGeneric(ListGeneric *list, const size_t index, const size_t elemSize);
+int ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize);
+void ListClearGeneric(ListGeneric *list, const size_t elemSize);
+
+#define M_ListGenericParams(list, ...) (ListGeneric *)list, ## __VA_ARGS__, sizeof(*(list)->V)
 #define ListAdd(list, value) ListAddGeneric(M_ListGenericParams(list, value))
 #define ListInsert(list, value, index) ListInsertGeneric(M_ListGenericParams(list, value, index))
 #define ListRemoveAt(list, index) ListRemoveAtGeneric(M_ListGenericParams(list, index))

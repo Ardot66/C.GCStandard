@@ -5,11 +5,11 @@
 #include "CollectionsPlus.h"
 #include "Try.h"
 
-ListDeclare(int, int);
+typedef List(int, int) ListInt;
 
 int TestList()
 {
-    List(int) list;
+    ListInt list;
     ListInit(&list, 0);
 
     for(int x = 0; x < 4; x++)

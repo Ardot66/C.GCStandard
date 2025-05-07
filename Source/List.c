@@ -3,10 +3,10 @@
 #include "CollectionsPlus.h"
 #include "Try.h"
 
-int ListResizeGeneric(List(void) *list, const size_t newLength, const size_t elemSize)
+int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
     PrintStackTrace();
-    List(void) *temp;
+    ListGeneric *temp;
     Try((temp = realloc(list->V, newLength * elemSize)) == NULL, -1);
 
     list->V = temp;
@@ -15,7 +15,7 @@ int ListResizeGeneric(List(void) *list, const size_t newLength, const size_t ele
     return 0;
 }
 
-void ListRemoveAtGeneric(List(void) *list, const size_t index, const size_t elemSize)
+void ListRemoveAtGeneric(ListGeneric *list, const size_t index, const size_t elemSize)
 {
     memmove(
         (char *)list->V + index * elemSize, 
@@ -26,7 +26,7 @@ void ListRemoveAtGeneric(List(void) *list, const size_t index, const size_t elem
     list->Count--;
 }
 
-int ListAddGeneric(List(void) *list, const void *value, const size_t elemSize)
+int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize)
 {
     if(list->Count >= list->Length)
         Try(ListResizeGeneric(list, list->Length * 2 + 1, elemSize), -1);
@@ -36,7 +36,7 @@ int ListAddGeneric(List(void) *list, const void *value, const size_t elemSize)
     return 0;
 }
 
-int ListInsertGeneric(List(void) *list, const void *value, const size_t index, const size_t elemSize)
+int ListInsertGeneric(ListGeneric *list, const void *value, const size_t index, const size_t elemSize)
 {
     if(list->Count >= list->Length)
         Try(ListResizeGeneric(list, list->Length * 2 + 1, elemSize), -1);
@@ -56,7 +56,7 @@ int ListInsertGeneric(List(void) *list, const void *value, const size_t index, c
     return 0;
 }
 
-int ListInitGeneric(List(void) *list, const size_t length, const size_t elemSize)
+int ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize)
 {
     Try((list->V = malloc(length * elemSize)) == NULL, -1);
 
@@ -65,7 +65,7 @@ int ListInitGeneric(List(void) *list, const size_t length, const size_t elemSize
     return 0;
 }
 
-void ListClearGeneric(List(void) *list, const size_t elemSize)
+void ListClearGeneric(ListGeneric *list, const size_t elemSize)
 {
     list->Count = 0;
 }
