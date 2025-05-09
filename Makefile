@@ -1,26 +1,36 @@
-SHELL = cmd
+SHELL = bash
 
 DEPEND = $() Try
-BIN = ../Bin
-HEADER = Header
-SOURCE = Source/*
-TESTS = Tests/*
+DLL_BIN = ../Bin
+BIN = Bin
+SOURCE = Source/*.c
+TESTS = Tests/*.c
 NAME = CollectionsPlus
 
-DLL := $(BIN)/lib$(NAME).dll
-TESTS_EXE := $(BIN)/$(NAME)Tests.exe
+DLL := $(DLL_BIN)/lib$(NAME).dll
+TESTS_EXE := $(BIN)/Tests.exe
+RUN := $(TESTS_EXE)
 
 HEADERS_WILDCARD = ../*/Header
 HEADERS := $(subst $() , -I , $(wildcard $(HEADERS_WILDCARD)))
 
-All: $(DLL) $(TESTS_EXE)
-	$(TESTS_EXE)
+Debug: COMPILE_FLAGS = -g
+Debug: Compile
 
-$(DLL): $(SOURCE) $(HEADERS_WILDCARD)/*
-	gcc -fPIC -shared $(SOURCE) $(HEADERS) -L$(BIN) $(subst $() ,-l,$(DEPEND)) -o $(DLL)
+Release: COMPILE_FLAGS = -s
+Release: Compile
 
-$(TESTS_EXE): $(DLL) $(TESTS) $(HEADERS_WILDCARD)/*
-	gcc $(TESTS) $(HEADERS) -L$(BIN) -l$(NAME) -o $(TESTS_EXE)
+Debugger: RUN = gdb $(TESTS_EXE)
+Debugger: Debug
+
+Compile: $(DLL) $(TESTS_EXE)
+	$(RUN)
+
+$(DLL): $(SOURCE) $(HEADERS_WILDCARD)/*.h
+	gcc $(COMPILE_FLAGS) -fPIC -shared $(SOURCE) $(HEADERS) -L$(DLL_BIN) $(subst $() , -l,$(DEPEND)) -o $(DLL)
+
+$(TESTS_EXE): $(DLL) $(TESTS) $(HEADERS_WILDCARD)/*.h
+	gcc $(COMPILE_FLAGS) $(TESTS) $(HEADERS) -L $(DLL_BIN) -l$(NAME) -o $(TESTS_EXE)
 
 Clean:
-	del /Q $(subst /,\,$(TESTS_EXE) $(DLL))
+	rm $(TESTS_EXE) $(DLL)
