@@ -5,7 +5,6 @@
 
 int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
-    PrintStackTrace();
     ListGeneric *temp;
     Try((temp = realloc(list->V, newLength * elemSize)) == NULL, -1);
 

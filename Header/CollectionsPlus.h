@@ -22,5 +22,14 @@ void ListClearGeneric(ListGeneric *list, const size_t elemSize);
 #define ListResize(list, length) ListResizeGeneric(M_ListGenericParams(list, length))
 #define ListClear(list) ListClearGeneric(M_ListGenericParams(list))
 
+#define CList(type) CList_ ## type ## _ ## CollectionsUID
+#define CListDeclare(type) typedef struct CList(type) {type *V; size_t Length; size_t Count; size_t Offset;} CList(type);
+
+CListDeclare(void);
+
+
+#define M_CListGenericParams(list, ...) (CListVoid *)list, ## __VA_ARGS__, sizeof(*(list)->V)
+#define CListGet(list, index) ((list)->V[(index + (list)->Offset) % list->Length])
+#define CListSet(list, index, value) ((list)->V[(index + (list)->Offset) % list->Length] = value)
 
 #endif
