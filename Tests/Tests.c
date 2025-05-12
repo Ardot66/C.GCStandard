@@ -5,7 +5,7 @@
 #include "CollectionsPlus.h"
 #include "Try.h"
 
-typedef List(int, int) ListInt;
+TypedefList(int, ListInt);
 
 int TestList()
 {

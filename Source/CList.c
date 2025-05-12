@@ -4,21 +4,21 @@
 #include "CollectionsPlus.h"
 #include "Try.h"
 
-static inline void *CListIndex(CList(void) *list, const size_t index, const size_t elemSize)
+static inline void *CListIndex(CListGeneric *list, const size_t index, const size_t elemSize)
 {
     return (char *)list->V + ((index + list->Offset) % list->Length);
 }
 
-static inline void CListChangeOffset(CList(void) *list, const ssize_t amount)
+static inline void CListChangeOffset(CListGeneric *list, const ssize_t amount)
 {
-    ssize_t offset = (ssize_t)list->Offset + amount;
-    while(offset < 0)
+    ssize_t offset = ((ssize_t)list->Offset + amount) % list->Length;
+    if(offset < 0)
         offset += list->Length;
 
     list->Offset = offset;
 }
 
-void CListMove(CList(void) *list, const size_t startIndex, const size_t endIndex, const size_t amount, const size_t elemSize)
+void CListMoveGeneric(CListGeneric *list, const size_t startIndex, const size_t endIndex, const size_t amount, const size_t elemSize)
 {
     int direction = startIndex < endIndex;
     ssize_t mult = !direction - direction;
@@ -28,9 +28,9 @@ void CListMove(CList(void) *list, const size_t startIndex, const size_t endIndex
         memcpy(CListIndex(list, endIndex + add + x * mult, elemSize), CListIndex(list, startIndex + add + x * mult, elemSize), elemSize);
 }
 
-int CListResizeGeneric(CList(void) *list, const size_t newLength, const size_t elemSize)
+int CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize)
 {
-    CList(void) *temp = realloc(list->V, newLength * elemSize);
+    CListGeneric *temp = realloc(list->V, newLength * elemSize);
 
     if(temp == NULL)
         return errno;
@@ -48,7 +48,7 @@ int CListResizeGeneric(CList(void) *list, const size_t newLength, const size_t e
     return 0;
 }
 
-int CListAddGeneric(CList(void) *list, const void *value, const size_t elemSize)
+int CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize)
 {
     if(list->Count >= list->Length)
     {
@@ -60,7 +60,7 @@ int CListAddGeneric(CList(void) *list, const void *value, const size_t elemSize)
     return 0;
 }
 
-int CListInsertGeneric(CList(void) *list, const void *value, const size_t index, const size_t elemSize)
+int CListInsertGeneric(CListGeneric *list, const void *value, const size_t index, const size_t elemSize)
 {
     if(list->Count >= list->Length)
     {
@@ -71,28 +71,28 @@ int CListInsertGeneric(CList(void) *list, const void *value, const size_t index,
     if(index < list->Count >> 1)
     {
         CListChangeOffset(list, -1);
-        CListMove(list, 1, 0, index, elemSize);
+        CListMoveGeneric(list, 1, 0, index, elemSize);
     }
     else
-        CListMove(list, index, index + 1, list->Count - index, elemSize);
+        CListMoveGeneric(list, index, index + 1, list->Count - index, elemSize);
 
     memcpy(CListIndex(list, index, elemSize), value, elemSize);
     list->Count++;
     return 0;
 }
 
-void CListRemoveAtGeneric(CList(void) *list, const size_t index, const size_t elemSize)
+void CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize)
 {
     if(index < list->Count >> 1)
     {
-        CListMove(list, 0, 1, index, elemSize);
+        CListMoveGeneric(list, 0, 1, index, elemSize);
         CListChangeOffset(list, 1);
     }
     else
-        CListMove(list, index + 1, index, list->Count - index - 1, elemSize);
+        CListMoveGeneric(list, index + 1, index, list->Count - index - 1, elemSize);
 }
 
-int CListInitGeneric(CList(void) *list, const size_t length, const size_t elemSize)
+int CListInitGeneric(CListGeneric *list, const size_t length, const size_t elemSize)
 {
     list->V = malloc(length * elemSize);
 

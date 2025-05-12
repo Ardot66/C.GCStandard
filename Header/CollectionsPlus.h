@@ -1,11 +1,11 @@
 #ifndef ___COLLECTIONS_PLUS___
 #define ___COLLECTIONS_PLUS___
 
-#include <stdint.h>
+#include <stddef.h>
 
-#define List(type, typeName) struct List ## typeName {type *V; size_t Length; size_t Count;}
+#define TypedefList(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count;} typeName;
 
-typedef List(void, void) ListGeneric;
+TypedefList(void, ListGeneric);
 
 int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize);
 int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize);
@@ -22,13 +22,11 @@ void ListClearGeneric(ListGeneric *list, const size_t elemSize);
 #define ListResize(list, length) ListResizeGeneric(M_ListGenericParams(list, length))
 #define ListClear(list) ListClearGeneric(M_ListGenericParams(list))
 
-#define CList(type) CList_ ## type ## _ ## CollectionsUID
-#define CListDeclare(type) typedef struct CList(type) {type *V; size_t Length; size_t Count; size_t Offset;} CList(type);
+#define TypedefCList(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count; size_t Offset;} typeName;
 
-CListDeclare(void);
+TypedefCList(void, CListGeneric);
 
-
-#define M_CListGenericParams(list, ...) (CListVoid *)list, ## __VA_ARGS__, sizeof(*(list)->V)
+#define M_CListGenericParams(list, ...) (CListGeneric *)list, ## __VA_ARGS__, sizeof(*(list)->V)
 #define CListGet(list, index) ((list)->V[(index + (list)->Offset) % list->Length])
 #define CListSet(list, index, value) ((list)->V[(index + (list)->Offset) % list->Length] = value)
 
