@@ -14,15 +14,15 @@ int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t el
     return 0;
 }
 
-void ListRemoveAtGeneric(ListGeneric *list, const size_t index, const size_t elemSize)
+void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const size_t count, const size_t elemSize)
 {
     memmove(
-        (char *)list->V + index * elemSize, 
-        (char *)list->V + (index + 1) * elemSize,
-        (list->Count - index - 1) * elemSize
+        (char *)list->V + startIndex * elemSize, 
+        (char *)list->V + (startIndex + count) * elemSize,
+        (list->Count - startIndex - count) * elemSize
     );
 
-    list->Count--;
+    list->Count -= count;
 }
 
 int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize)
