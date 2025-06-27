@@ -22,6 +22,8 @@ void ListClearGeneric(ListGeneric *list, const size_t elemSize);
 #define ListResize(list, length) ListResizeGeneric(M_ListGenericParams(list, length))
 #define ListClear(list) ListClearGeneric(M_ListGenericParams(list))
 
+#define ListValid(list) ((list) != NULL && (list)->V != NULL)
+
 #define TypedefCList(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count; size_t Offset;} typeName;
 
 TypedefCList(void, CListGeneric);
