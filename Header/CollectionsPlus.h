@@ -6,6 +6,12 @@
 #define TypedefList(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count;} typeName
 
 TypedefList(void, ListGeneric);
+static const ListGeneric ListDefault = 
+{
+    .V = NULL,
+    .Length = 0,
+    .Count = 0
+};
 
 int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize);
 int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize);
