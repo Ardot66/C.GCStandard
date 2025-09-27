@@ -3,6 +3,19 @@
 #include "CollectionsPlus.h"
 #include "Try.h"
 
+int ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize)
+{
+    if(list->Count + newElementsCount > list->Length)
+    {
+        size_t newLength = list->Length == 0 ? 8 : list->Length;
+        while(newLength < list->Count + newElementsCount) 
+            newLength *= 2;
+        Try(ListResizeGeneric(list, newLength, elemSize), -1);
+    }
+
+    return 0;
+}
+
 int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
     ListGeneric *temp;
@@ -25,34 +38,41 @@ void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const si
     list->Count -= count;
 }
 
-int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize)
+int ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
 {
-    if(list->Count >= list->Length)
-        Try(ListResizeGeneric(list, list->Length * 2 + 1, elemSize), -1);
+    Assert(index <= list->Count, EINVAL, -1);
+    Try(ListAutoResize(list, rangeCount, elemSize), -1);
 
-    memcpy((char *)list->V + elemSize * list->Count, value, elemSize);
-    list->Count++;
+    if(index < list->Count)
+        memmove(
+            (char *)list->V + (index + rangeCount) * elemSize,
+            (char *)list->V + index * elemSize,
+            (list->Count - index) * elemSize
+        );
+
+    memcpy(
+        (char *)list->V + index * elemSize,
+        range, 
+        elemSize * rangeCount
+    );
+
+    list->Count += rangeCount;
     return 0;
 }
 
 int ListInsertGeneric(ListGeneric *list, const void *value, const size_t index, const size_t elemSize)
 {
-    if(list->Count >= list->Length)
-        Try(ListResizeGeneric(list, list->Length * 2 + 1, elemSize), -1);
+    return ListInsertRangeGeneric(list, value, 1, index, elemSize);
+}
 
-    memmove(
-        (char *)list->V + (index + 1) * elemSize,
-        (char *)list->V + index * elemSize,
-        (list->Count - index) * elemSize
-    );
-    memcpy(
-        (char *)list->V + index * elemSize,
-        value, 
-        elemSize
-    );
+int ListAddRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize)
+{
+    return ListInsertRangeGeneric(list, range, rangeCount, list->Count, elemSize);
+}
 
-    list->Count++;
-    return 0;
+int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize)
+{
+    return ListInsertRangeGeneric(list, value, 1, list->Count, elemSize);
 }
 
 int ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize)

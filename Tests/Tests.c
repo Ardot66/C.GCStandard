@@ -14,7 +14,8 @@ int TestList()
 
     for(int x = 0; x < 4; x++)
     {
-        ListAdd(&list, &x);
+        int result = ListAdd(&list, &x);
+        TEST_TYPED(result, ==, 0, int, "d");
         TEST(list.V[x], ==, x)
         TEST(list.Count, ==, x + 1)
     }

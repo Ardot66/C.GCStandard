@@ -15,14 +15,18 @@ static const ListGeneric ListDefault =
 
 int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize);
 int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize);
+int ListAddRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize);
 int ListInsertGeneric(ListGeneric *list, const void *value, const size_t index, const size_t elemSize);
+int ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize);
 int ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize);
 void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const size_t count, const size_t elemSize);
 void ListClearGeneric(ListGeneric *list, const size_t elemSize);
 
 #define M_ListGenericParams(list, ...) (ListGeneric *)list, ## __VA_ARGS__, sizeof(*(list)->V)
 #define ListAdd(list, value) ListAddGeneric(M_ListGenericParams(list, value))
+#define ListAddRange(list, range, rangeCount) ListAddRangeGeneric(M_ListGenericParams(list, range, rangeCount))
 #define ListInsert(list, value, index) ListInsertGeneric(M_ListGenericParams(list, value, index))
+#define ListInsertRange(list, range, rangeCount, index) ListInsertRangeGeneric(M_ListGenericParams(list, range, rangeCount, index))
 #define ListRemoveAt(list, index) ListRemoveRangeGeneric(M_ListGenericParams(list, index, 1))
 #define ListRemoveRange(list, index, count) ListRemoveRangeGeneric(M_ListGenericParams(list, index, count))
 #define ListInit(list, length) ListInitGeneric(M_ListGenericParams(list, length))
