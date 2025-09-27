@@ -28,7 +28,7 @@ void ListClearGeneric(ListGeneric *list, const size_t elemSize);
 #define ListInit(list, length) ListInitGeneric(M_ListGenericParams(list, length))
 #define ListResize(list, length) ListResizeGeneric(M_ListGenericParams(list, length))
 #define ListClear(list) ListClearGeneric(M_ListGenericParams(list))
-#define ListFree(list) free(list->V);
+#define ListFree(list) free((list)->V);
 
 #define ListValid(list) ((list) != NULL && (list)->V != NULL)
 
