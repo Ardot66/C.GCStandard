@@ -3,16 +3,15 @@
 #include <string.h>
 #include <stdio.h>
 
-__thread jmp_buf *_NextBufRef = NULL;
-__thread Exception _Exception = {};
+__thread struct _ExceptionThreadData _ExceptionThreadData = {};
 
 void _ExceptionJump(jmp_buf *jumpBuffer)
 {
     if(jumpBuffer == NULL)
     {
-        PrintException(_Exception);
+        PrintException(_ExceptionThreadData.Exception);
         printf("Fatal error: no try statement found to catch current exception, aborting\n");
-        exit(_Exception.Type);
+        exit(_ExceptionThreadData.Exception.Type);
     }
     
     longjmp(*jumpBuffer, -1);

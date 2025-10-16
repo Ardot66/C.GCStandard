@@ -13,17 +13,23 @@ typedef struct Exception
     const char *Function;
 } Exception;
 
-extern __thread jmp_buf *_NextBufRef;
-extern __thread Exception _Exception;
+// Thread local data needs to be wrapped in a single struct, weird overlapping stuff was happening otherwise.
+struct _ExceptionThreadData
+{
+    jmp_buf *NextBufRef;
+    Exception Exception;
+};
+
+extern __thread struct _ExceptionThreadData _ExceptionThreadData;
 
 void _ExceptionJump(jmp_buf *jumpBuffer);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
 #define ExitInit() \
-jmp_buf _buf, *_nextBuf = _NextBufRef;\
+jmp_buf _buf, *_nextBuf = _ExceptionThreadData.NextBufRef;\
 \
 if(setjmp(_buf) == 0) \
-    _NextBufRef = &_buf; \
+    _ExceptionThreadData.NextBufRef = &_buf; \
 else \
     goto _ExitBegin
 
@@ -36,11 +42,11 @@ do { do{}while(0)
 
 // Used to check if the exit block has been triggered by an exception, which can be useful when freeing
 // resources that would otherwise be passed to a calling function.
-#define IfExitException if (_Exception.Type)
+#define IfExitException if (_ExceptionThreadData.Exception.Type)
 
 // Marks the end of an exit block.
 #define ExitEnd \
-    if(_Exception.Type) \
+    if(_ExceptionThreadData.Exception.Type) \
         _ExceptionJump(_nextBuf);\
 } while (0)
 
@@ -48,8 +54,8 @@ do { do{}while(0)
 // try block for handling.
 #define Throw(error, message)\
 do { \
-    _Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
-    _ExceptionJump(_NextBufRef);\
+    _ExceptionThreadData.Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
+    _ExceptionJump(_ExceptionThreadData.NextBufRef);\
 } while (0)
 
 // Throws an existing exception.
@@ -70,20 +76,20 @@ if(!(statement))\
 #define TryBegin(exception)\
 do {\
     exception = (Exception){};\
-    jmp_buf _tryBuf, *_tryNextBuf = _NextBufRef;\
+    jmp_buf _tryBuf, *_tryNextBuf = _ExceptionThreadData.NextBufRef;\
     \
     if(setjmp(_tryBuf) == 0)\
-        _NextBufRef = &_tryBuf;\
+        _ExceptionThreadData.NextBufRef = &_tryBuf;\
     else { \
-        exception = _Exception; \
-        _Exception = (Exception){};\
-        _NextBufRef = _tryNextBuf; \
+        exception = _ExceptionThreadData.Exception; \
+        _ExceptionThreadData.Exception = (Exception){};\
+        _ExceptionThreadData.NextBufRef = _tryNextBuf; \
         break; \
     } do{}while(0)
 
 // Marks the end of a try block.
 #define TryEnd \
-    _NextBufRef = _tryNextBuf;\
+    _ExceptionThreadData.NextBufRef = _tryNextBuf;\
 } while (0)
 
 // Neatly prints an exception to the standard output.
