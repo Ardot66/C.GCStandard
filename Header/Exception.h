@@ -2,10 +2,7 @@
 #define __EXCEPTION__
 
 #include <setjmp.h>
-#include <errno.h>
-#include <stdio.h>
 #include <stdint.h>
-#include <string.h>
 
 typedef struct Exception
 {
@@ -18,6 +15,8 @@ typedef struct Exception
 
 extern __thread jmp_buf *_NextBufRef;
 extern __thread Exception _Exception;
+
+void _ExceptionJump(jmp_buf *jumpBuffer);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
 #define ExitInit() \
@@ -35,18 +34,22 @@ else \
 _ExitBegin: \
 do { do{}while(0)
 
+// Used to check if the exit block has been triggered by an exception, which can be useful when freeing
+// resources that would otherwise be passed to a calling function.
+#define IfExitException if (_Exception.Type)
+
 // Marks the end of an exit block.
 #define ExitEnd \
-if(_Exception.Type) \
-    longjmp(*_nextBuf, -1);\
+    if(_Exception.Type) \
+        _ExceptionJump(_nextBuf);\
 } while (0)
 
 // Throws an exception, automatically exiting the current scope and jumping to the most recent exit block for cleanup or
 // try block for handling.
 #define Throw(error, message)\
 do { \
-_Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
-longjmp(*_NextBufRef, -1);\
+    _Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
+    _ExceptionJump(_NextBufRef);\
 } while (0)
 
 // Throws an existing exception.
@@ -66,21 +69,21 @@ if(!(statement))\
 // If an exception occurs in a try block, code execution will immediately fast-forward to the end of the block.
 #define TryBegin(exception)\
 do {\
-exception = (Exception){};\
-jmp_buf _tryBuf, *_tryNextBuf = _NextBufRef;\
-\
-if(setjmp(_tryBuf) == 0)\
-    _NextBufRef = &_tryBuf;\
-else { \
-    exception = _Exception; \
-    _Exception = (Exception){};\
-    _NextBufRef = _tryNextBuf; \
-    break; \
-} do{}while(0)
+    exception = (Exception){};\
+    jmp_buf _tryBuf, *_tryNextBuf = _NextBufRef;\
+    \
+    if(setjmp(_tryBuf) == 0)\
+        _NextBufRef = &_tryBuf;\
+    else { \
+        exception = _Exception; \
+        _Exception = (Exception){};\
+        _NextBufRef = _tryNextBuf; \
+        break; \
+    } do{}while(0)
 
 // Marks the end of a try block.
 #define TryEnd \
-_NextBufRef = _tryNextBuf;\
+    _NextBufRef = _tryNextBuf;\
 } while (0)
 
 // Neatly prints an exception to the standard output.
