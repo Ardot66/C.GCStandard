@@ -3,8 +3,6 @@
 #include "CollectionsPlus.h"
 #include "Exception.h"
 
-#include <stdio.h>
-
 void ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize)
 {
     if(list->Count + newElementsCount > list->Length)
@@ -18,17 +16,8 @@ void ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize
 
 void ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
-    printf("Locations: %p %p Diff: %p", &_NextBufRef, &_Exception, (char *)&_Exception - (char *)&_NextBufRef);
-
     ListGeneric *temp = realloc(list->V, newLength * elemSize);
-    // Assert(!temp, errno);
-
-    if(!(!temp)) 
-    { 
-        _Exception = (Exception){.Type = 56, .Message = "Assertion failed (" "!temp" ")", .Line = 23, .File = "C:\\Users\\User\\Projects\\C\\CollectionsPlus\\Source\\List.c", .Function = __func__}; 
-        printf("Next ref: %p\n", _NextBufRef);
-        _ExceptionJump(_NextBufRef);
-    } 
+    Assert(temp, errno);
 
     list->V = temp;
     list->Length = newLength;

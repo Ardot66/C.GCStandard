@@ -16,7 +16,6 @@ int TestList()
 
         for(int x = 0; x < 4; x++)
         {
-            printf("Next ref: %p\n", _NextBufRef);
             ListAdd(&list, &x);
 
             TEST(list.V[x], ==, x)
