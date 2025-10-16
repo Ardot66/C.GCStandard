@@ -2,6 +2,7 @@
 #define ___COLLECTIONS_PLUS___
 
 #include <stddef.h>
+#include <stdlib.h>
 
 #define TypedefList(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count;} typeName
 
@@ -13,12 +14,12 @@ static const ListGeneric ListDefault =
     .Count = 0
 };
 
-int ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize);
-int ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize);
-int ListAddRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize);
-int ListInsertGeneric(ListGeneric *list, const void *value, const size_t index, const size_t elemSize);
-int ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize);
-int ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize);
+void ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize);
+void ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize);
+void ListAddRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize);
+void ListInsertGeneric(ListGeneric *list, const void *value, const size_t index, const size_t elemSize);
+void ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize);
+void ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize);
 void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const size_t count, const size_t elemSize);
 void ListClearGeneric(ListGeneric *list, const size_t elemSize);
 
