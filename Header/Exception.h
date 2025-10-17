@@ -7,7 +7,7 @@
 typedef struct Exception
 {
     int Type;
-    char *Message;
+    const char *Message;
     uint64_t Line;
     const char *File;
     const char *Function;
@@ -75,14 +75,14 @@ if(!(statement))\
 // If an exception occurs in a try block, code execution will immediately fast-forward to the end of the block.
 #define TryBegin(exception)\
 do {\
-    exception = (Exception){};\
+    exception = (Exception){0};\
     jmp_buf _tryBuf, *_tryNextBuf = _ExceptionThreadData.NextBufRef;\
     \
     if(setjmp(_tryBuf) == 0)\
         _ExceptionThreadData.NextBufRef = &_tryBuf;\
     else { \
         exception = _ExceptionThreadData.Exception; \
-        _ExceptionThreadData.Exception = (Exception){};\
+        _ExceptionThreadData.Exception = (Exception){0};\
         _ExceptionThreadData.NextBufRef = _tryNextBuf; \
         break; \
     } do{}while(0)

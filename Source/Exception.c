@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-__thread struct _ExceptionThreadData _ExceptionThreadData = {};
+__thread struct _ExceptionThreadData _ExceptionThreadData = {0};
 
 void _ExceptionJump(jmp_buf *jumpBuffer)
 {
