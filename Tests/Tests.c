@@ -1,6 +1,6 @@
-void ExceptionTests();
+void TestException();
 
 int main()
 {
-    ExceptionTests();
+    TestException();
 }

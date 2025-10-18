@@ -1,5 +1,5 @@
-#ifndef __EXCEPTION__
-#define __EXCEPTION__
+#ifndef __GC_EXCEPTION__
+#define __GC_EXCEPTION__
 
 #include <setjmp.h>
 #include <stdint.h>
