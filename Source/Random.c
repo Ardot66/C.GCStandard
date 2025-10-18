@@ -14,8 +14,13 @@ RandomState RandomStateFromTime()
 	struct timespec timespec;
 	timespec_get(&timespec, 0);
 	
-	GlobalRandomState.State[0] = timespec.tv_sec;
-	GlobalRandomState.State[1] = timespec.tv_nsec;
+    RandomState randomState =
+    {
+        .State[0] = timespec.tv_sec,
+        .State[1] = timespec.tv_nsec
+    };
+
+    return randomState;
 }
 
 uint64_t GlobalRandom()
@@ -45,5 +50,5 @@ double GlobalRandomFloat()
 // Returns a random float between zero and one
 double RandomFloat(RandomState *state)
 {
-    return (double)GlobalRandom() / (double)UINT64_MAX;
+    return (double)Random(state) / (double)UINT64_MAX;
 }
