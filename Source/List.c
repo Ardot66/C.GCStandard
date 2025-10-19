@@ -46,11 +46,12 @@ void ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t r
             (list->Count - index) * elemSize
         );
 
-    memcpy(
-        (char *)list->V + index * elemSize,
-        range, 
-        elemSize * rangeCount
-    );
+    if(range)
+        memcpy(
+            (char *)list->V + index * elemSize,
+            range, 
+            elemSize * rangeCount
+        );
 
     list->Count += rangeCount;
 }
@@ -68,15 +69,6 @@ void ListAddRangeGeneric(ListGeneric *list, const void *range, const size_t rang
 void ListAddGeneric(ListGeneric *list, const void *value, const size_t elemSize)
 {
     ListInsertRangeGeneric(list, value, 1, list->Count, elemSize);
-}
-
-void ListInitGeneric(ListGeneric *list, const size_t length, const size_t elemSize)
-{
-    list->V = malloc(length * elemSize);
-    Assert(list->V, errno);
-
-    list->Length = length;
-    list->Count = 0;
 }
 
 void ListClearGeneric(ListGeneric *list)

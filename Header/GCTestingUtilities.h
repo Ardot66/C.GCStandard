@@ -20,7 +20,7 @@ static inline void PrintTestStatus(char *message)
     if(message == NULL)
         message = "Testing completed";
 
-    printf("%s , %llu out of %llu tests passed.\n", message, TestsRun, TestsPassed);
+    printf("%s, %llu out of %llu tests passed.\n", message, TestsPassed, TestsRun);
 }
 
 #define TEST_VERBOSE(message, pattern, expressionString) printf(message ": %s; Values are %" pattern ", %" pattern "; at %s line %d\n", expressionString, valueA, valueB, __FILE__, __LINE__)
