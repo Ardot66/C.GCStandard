@@ -33,6 +33,14 @@ void TestList()
             for(int y = 0; y <= x; y++)
                 TEST(list.V[y], ==, x - y)
         }
+
+        int rangeToAdd[] = {1, 5, 3, 71};
+        ListClear(&list);
+        ListAddRange(&list, rangeToAdd, 4);
+        TEST(list.Count, ==, 4);
+
+        for(int x = 0; x < 4; x++)
+            TEST(list.V[x], ==, rangeToAdd[x]);
     TryEnd;
 
     if(exception.Type)
