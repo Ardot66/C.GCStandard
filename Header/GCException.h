@@ -33,21 +33,42 @@ if(setjmp(_buf) == 0) \
 else \
     goto _ExitBegin
 
-// Marks the beginning of an exit block, which is guaranteed to run no matter what, and is ideal for cleanup code.
-// Exit blocks should be placed at the end of a function, and require that ExitInit() has been called at the 
-// beginning of the function.
-#define ExitBegin \
-_ExitBegin: \
-do { do{}while(0)
-
 // Used to check if the exit block has been triggered by an exception, which can be useful when freeing
 // resources that would otherwise be passed to a calling function.
 #define IfExitException if (_ExceptionThreadData.Exception.Type)
 
+// Can be used to split up exit blocks into sections to allow memory to be freed throughout a function
+// rather than just at the end. Must be placed at the end of a exit block section, and must be paired
+// with a respective ExitJumpEnd with the same identifier.
+//
+// As with a standard exit block, a split exit block is guaranteed to execute regardless of whether
+// or not an exception is thrown.
+//
+// Note: Exit blocks sections can execute multiple times in cases where a section has executed normally,
+// but an exception occurs before the final section has been reached. For such sections, ensure that
+// double frees are avoided by setting freed pointers to null.
+#define ExitJumpBegin(index) \
+IfExitException\
+    goto _ExitBegin ## index;\
+} while (0)
+
+// Used with ExitJumpBegin to split exit blocks into sections. Must be placed at the start of a exit
+// block section. See ExitJumpBegin for more info.
+#define ExitJumpEnd(index)\
+_ExitBegin ## index: \
+do { do{}while(0)
+
+// Marks the beginning of an exit block, which is guaranteed to run no matter what, and is ideal for cleanup code.
+// Exit blocks should be placed at the end of a function, and require that ExitInit() has been called at the 
+// beginning of the function.
+#define ExitBegin ExitJumpEnd()
+
 // Marks the end of an exit block.
 #define ExitEnd \
-    if(_ExceptionThreadData.Exception.Type) \
-        _ExceptionJump(_nextBuf);\
+IfExitException\
+    _ExceptionJump(_nextBuf);\
+else\
+    _ExceptionThreadData.NextBufRef = _nextBuf;\
 } while (0)
 
 // Throws an exception, automatically exiting the current scope and jumping to the most recent exit block for cleanup or

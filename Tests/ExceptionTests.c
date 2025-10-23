@@ -5,14 +5,16 @@
 
 const char *ErrorMessage = "This is an error";
 size_t ExceptionRecursions = 5, ExceptionExitsCounted = 0;
+size_t throw = 0;
 
 void ExceptionRecursionTest(size_t recursion)
 {
-    if(recursion > ExceptionRecursions)
+    if(throw)
         Throw(EINVAL, ErrorMessage);
 
     ExitInit();
-
+    
+    if(recursion < ExceptionRecursions)
     ExceptionRecursionTest(recursion + 1);
 
     ExitBegin;
@@ -23,8 +25,11 @@ void ExceptionRecursionTest(size_t recursion)
 
         ExceptionExitsCounted++;
     ExitEnd;
+
+    throw = 1;
 }
 
+// TODO: Set up tests for exception jumps.
 void TestException()
 {
     ExitInit();
