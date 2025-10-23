@@ -42,6 +42,10 @@ static inline size_t DictGetSize(const size_t length, const size_t keySize, cons
 
 ssize_t DictIndexOfGeneric(const DictGeneric*dictionary, const void *key, const DictFunctions functions, const size_t keySize, const size_t valueSize)
 {
+    // Avoid modulo by zero exception.
+    if(dictionary->Length == 0)
+        return -1;
+
     uint64_t hash = functions.Hash(keySize, key);
 
     for(size_t x = 0, checkIndex = hash % dictionary->Length; x < dictionary->Length; x++, checkIndex = (checkIndex + 1) % dictionary->Length)
