@@ -9,19 +9,21 @@ size_t throw = 0;
 
 void ExceptionRecursionTest(size_t recursion)
 {
-    if(throw)
-        Throw(EINVAL, ErrorMessage);
-
     ExitInit();
     
     if(recursion < ExceptionRecursions)
-    ExceptionRecursionTest(recursion + 1);
+        ExceptionRecursionTest(recursion + 1);
+
+    if(throw)
+        Throw(EINVAL, ErrorMessage);
 
     ExitBegin;
         int detected = 0;
         IfExitException
             detected = 1;
-        TEST(detected, ==, 1);
+
+        if(throw == 1)
+            TEST(detected, ==, 1);
 
         ExceptionExitsCounted++;
     ExitEnd;

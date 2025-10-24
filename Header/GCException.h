@@ -22,6 +22,7 @@ struct _ExceptionThreadData
 
 extern __thread struct _ExceptionThreadData _ExceptionThreadData;
 
+[[__noreturn__]]
 void _ExceptionJump(jmp_buf *jumpBuffer);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.

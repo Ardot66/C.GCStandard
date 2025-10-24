@@ -34,8 +34,8 @@ TEST_VERBOSE("Test Passed", pattern, expressionString)
 
 #define TEST_BASE(a, b, expression, expressionString, type, pattern, ...)\
 {\
-    type valueA = (type)a;\
-    type valueB = (type)b;\
+    type volatile valueA = (type)(a);\
+    type volatile valueB = (type)(b);\
     TestsRun++; \
     if(expression) \
     {\
