@@ -92,7 +92,7 @@ void TestDictionary()
             ssize_t index = DictIndexOf(&dict, key, functions);
 
             TEST(index, !=, -1);
-            TEST(*(size_t *)DictGetValue(&dict, index), ==, x);
+            TEST(*DictGetValue(&dict, index), ==, x);
         }
 
         for(size_t x = 0; x < removeElements; x++)
@@ -111,7 +111,7 @@ void TestDictionary()
                 continue;
 
             TEST(index, !=, -1);
-            TEST(*(size_t *)DictGetValue(&dict, index), ==, x);
+            TEST(*DictGetValue(&dict, index), ==, x);
         }
 
     TryEnd;

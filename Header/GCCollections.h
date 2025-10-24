@@ -78,16 +78,15 @@ size_t DictDefaultStringHash(const size_t keySize, const void *key);
 int DictDefaultStringEquate(const size_t keySize, const void *keyA, const void *keyB);
 #define DictDefaultStringFunctions {.Hash = DictDefaultStringHash, .Equate = DictDefaultStringEquate}
 
-#define _DictGenericParams(dict, ...) (DictGeneric *)dict, ## __VA_ARGS__, sizeof(*(dict)->_Key), sizeof(*(dict)->_Value)
-#define DictGetKey(dict, index) DictGetKeyGeneric(_DictGenericParams(dict, index))
-#define DictGetValue(dict, index) DictGetValueGeneric(_DictGenericParams(dict, index))
-#define DictIndexOf(dict, key, functions) DictIndexOfGeneric(_DictGenericParams(dict, &(key), functions))
+#define M_DictGenericParams(dict, ...) (DictGeneric *)dict, ## __VA_ARGS__, sizeof(*(dict)->_Key), sizeof(*(dict)->_Value)
+#define DictGetKey(dict, index) (typeof((dict)->_Key))DictGetKeyGeneric(M_DictGenericParams(dict, index))
+#define DictGetValue(dict, index) (typeof((dict)->_Value))DictGetValueGeneric(M_DictGenericParams(dict, index))
+#define DictIndexOf(dict, key, functions) DictIndexOfGeneric(M_DictGenericParams(dict, &(key), functions))
 #define DictFree(dict) DictFreeGeneric((DictGeneric *)dict)
-#define DictResize(dict, newLength, functions) DictResizeGeneric(_DictGenericParams(dict, newLength, functions))
+#define DictResize(dict, newLength, functions) DictResizeGeneric(M_DictGenericParams(dict, newLength, functions))
 // This requires that key be a variable that can have its address taken.
-// #define DictAdd(dict, key, value, functions) do {(dict)->V[DictAddGeneric(_DictGenericParams(dict, &(key), NULL, functions))].Value = value;} while (0)
-#define DictAdd(dict, key, value, functions) DictAddGeneric(_DictGenericParams(dict, &(key), &(value), functions))
-#define DictRemove(dict, index, functions) DictRemoveGeneric(_DictGenericParams(dict, index, functions))
-#define DictIterate(dict, index) DictIterateGeneric(_DictGenericParams(dict, index))
+#define DictAdd(dict, key, value, functions) DictAddGeneric(M_DictGenericParams(dict, &(key), &(value), functions))
+#define DictRemove(dict, index, functions) DictRemoveGeneric(M_DictGenericParams(dict, index, functions))
+#define DictIterate(dict, index) DictIterateGeneric(M_DictGenericParams(dict, index))
 
 #endif 
