@@ -17,7 +17,7 @@ void ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize
 void ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
     ListGeneric *temp = realloc(list->V, newLength * elemSize);
-    Assert(temp, errno);
+    ThrowIf(!temp, errno);
 
     list->V = temp;
     list->Length = newLength;
@@ -36,7 +36,7 @@ void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const si
 
 void ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
 {
-    Assert(index <= list->Count, EINVAL);
+    ThrowIf(index > list->Count, EINVAL);
     ListAutoResize(list, rangeCount, elemSize);
 
     if(index < list->Count)

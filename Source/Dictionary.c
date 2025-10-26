@@ -77,7 +77,7 @@ void DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const Di
     newDictionary.Count = 0;
     newDictionary.Length = newLength;
     newDictionary.V = malloc(DictGetSize(newLength, keySize, valueSize));
-    Assert(newDictionary.V, errno);
+    ThrowIf(!newDictionary.V, errno);
 
     memset(DictGetExistsList(&newDictionary, keySize, valueSize), 0, DictGetExistsListCount(newDictionary.Length) * sizeof(ExistsListInt));
 

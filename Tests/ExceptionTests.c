@@ -49,7 +49,7 @@ void TestException()
     PrintException(exception);
 
     TryBegin(exception);
-        Assert(1 == 0, ENOMEM);
+        ThrowIf(1 == 1, ENOMEM);
     TryEnd;
 
     TEST(exception.Type, ==, ENOMEM)

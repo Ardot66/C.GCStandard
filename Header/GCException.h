@@ -84,13 +84,13 @@ do { \
 #define ThrowException(exception) Throw((exception).Type, (exception).Message)
 
 // Confirms that a statement is true, throwing an exception otherwise.
-#define AssertMsg(statement, error, message)\
-if(!(statement))\
+#define ThrowMsgIf(statement, error, message)\
+if(statement)\
     Throw(error, message)
 
 // Confirms that a statement is true, throwing an exception otherwise.
 // Always contains the error message "Assertion failed".
-#define Assert(statement, error) AssertMsg(statement, error, "Assertion failed (" #statement ")")
+#define ThrowIf(statement, error) ThrowMsgIf(statement, error, "Error detected: (" #statement ")")
 
 // Marks the beginning of a try block, in which any exceptions will be caught and placed in the passed exception variable
 // for handling after the try block ends.
