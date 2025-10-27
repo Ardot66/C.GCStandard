@@ -13,71 +13,63 @@ typedef struct Exception
     const char *Function;
 } Exception;
 
+typedef void (* GCInternalExitFunc)();
+
 // Thread local data needs to be wrapped in a single struct, weird overlapping stuff was happening otherwise.
-struct _ExceptionThreadData
+struct GCInternalExceptionThreadData
 {
     jmp_buf *NextBufRef;
+    GCInternalExitFunc NextExitFunc;
     Exception Exception;
 };
 
-extern __thread struct _ExceptionThreadData _ExceptionThreadData;
+extern thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData;
 
 [[__noreturn__]]
-void _ExceptionJump(jmp_buf *jumpBuffer);
+void GCInternalExceptionJump(GCInternalExitFunc nextExit);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
-#define ExitInit() \
-jmp_buf _buf, *_nextBuf = _ExceptionThreadData.NextBufRef;\
-\
-if(setjmp(_buf) == 0) \
-    _ExceptionThreadData.NextBufRef = &_buf; \
-else \
-    goto _ExitBegin
-
-// Used to check if the exit block has been triggered by an exception, which can be useful when freeing
-// resources that would otherwise be passed to a calling function.
-#define IfExitException if (_ExceptionThreadData.Exception.Type)
-
-// Can be used to split up exit blocks into sections to allow memory to be freed throughout a function
-// rather than just at the end. Must be placed at the end of a exit block section, and must be paired
-// with a respective ExitJumpEnd with the same identifier.
+// If multiple exit blocks (and thus ExitInits) are placed within the same scope and intersect in any way,
+// they must be nested as if the internal exit block was within its own function.
 //
-// As with a standard exit block, a split exit block is guaranteed to execute regardless of whether
-// or not an exception is thrown.
-//
-// Note: Exit blocks sections can execute multiple times in cases where a section has executed normally,
-// but an exception occurs before the final section has been reached. For such sections, ensure that
-// double frees are avoided by setting freed pointers to null.
-#define ExitJumpBegin(index) \
-IfExitException\
-    goto _ExitBegin ## index;\
-} while (0)
-
-// Used with ExitJumpBegin to split exit blocks into sections. Must be placed at the start of a exit
-// block section. See ExitJumpBegin for more info.
-#define ExitJumpEnd(index)\
-_ExitBegin ## index: \
-do { do{}while(0)
+// The identifier parameter must only be set when multiple exit blocks exist within a single scope,
+// in which case all but one exit block must have a unique identifier.
+#define ExitInit(identifier) \
+auto void GCInternalExit ## identifier();\
+GCInternalExitFunc GCInternalNextExit ## identifier = GCInternalExceptionThreadData.NextExitFunc; \
+GCInternalExceptionThreadData.NextExitFunc = GCInternalExit ## identifier
 
 // Marks the beginning of an exit block, which is guaranteed to run no matter what, and is ideal for cleanup code.
-// Exit blocks should be placed at the end of a function, and require that ExitInit() has been called at the 
-// beginning of the function.
-#define ExitBegin ExitJumpEnd()
+// Exit blocks should be placed at the end of a function, and require that ExitInit() has been called before it
+// is possible that any exceptions have been thrown. It is recommended to initialize any variables that will
+// be cleaned up before invoking ExitInit, so that they are always in a state where freeing them is safe.
+//
+// See ExitInit for the use case of the identifier parameter, which can usually be left empty.
+#define ExitBegin(identifier)\
+GCInternalExit ## identifier();\
+void GCInternalExit ## identifier() {\
+do {} while (0)
+
+// Used to check if the exit block has been triggered by an exception, which can be useful when freeing
+// resources that would otherwise be returned.
+#define IfExitException if (GCInternalExceptionThreadData.Exception.Type)
 
 // Marks the end of an exit block.
-#define ExitEnd \
+//
+// See ExitInit for the use case of the identifier parameter, which can usually be left empty.
+#define ExitEnd(identifier) \
 IfExitException\
-    _ExceptionJump(_nextBuf);\
+    GCInternalExceptionJump(GCInternalNextExit ## identifier);\
 else\
-    _ExceptionThreadData.NextBufRef = _nextBuf;\
-} while (0)
+    GCInternalExceptionThreadData.NextExitFunc = GCInternalNextExit ## identifier;\
+} do {} while (0)
 
 // Throws an exception, automatically exiting the current scope and jumping to the most recent exit block for cleanup or
 // try block for handling.
 #define Throw(error, message)\
 do { \
-    _ExceptionThreadData.Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
-    _ExceptionJump(_ExceptionThreadData.NextBufRef);\
+    GCInternalExceptionThreadData.Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
+    GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc);\
 } while (0)
 
 // Throws an existing exception.
@@ -98,20 +90,23 @@ if(statement)\
 #define TryBegin(exception)\
 do {\
     exception = (Exception){0};\
-    jmp_buf _tryBuf, *_tryNextBuf = _ExceptionThreadData.NextBufRef;\
+    jmp_buf GCInternalTryBuf, *GCInternalNextTryBuf = GCInternalExceptionThreadData.NextBufRef;\
+    GCInternalExitFunc GCInternalTryNextExit = GCInternalExceptionThreadData.NextExitFunc;\
+    GCInternalExceptionThreadData.NextExitFunc = NULL;\
     \
-    if(setjmp(_tryBuf) == 0)\
-        _ExceptionThreadData.NextBufRef = &_tryBuf;\
+    if(setjmp(GCInternalTryBuf) == 0)\
+        GCInternalExceptionThreadData.NextBufRef = &GCInternalTryBuf;\
     else { \
-        exception = _ExceptionThreadData.Exception; \
-        _ExceptionThreadData.Exception = (Exception){0};\
-        _ExceptionThreadData.NextBufRef = _tryNextBuf; \
+        exception = GCInternalExceptionThreadData.Exception; \
+        GCInternalExceptionThreadData.Exception = (Exception){0};\
+        GCInternalExceptionThreadData.NextBufRef = GCInternalNextTryBuf; \
+        GCInternalExceptionThreadData.NextExitFunc = GCInternalTryNextExit;\
         break; \
     } do{}while(0)
 
 // Marks the end of a try block.
 #define TryEnd \
-    _ExceptionThreadData.NextBufRef = _tryNextBuf;\
+    GCInternalExceptionThreadData.NextBufRef = GCInternalNextTryBuf;\
 } while (0)
 
 // Neatly prints an exception to the standard output.

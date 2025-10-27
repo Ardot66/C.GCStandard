@@ -3,18 +3,21 @@
 #include <string.h>
 #include <stdio.h>
 
-__thread struct _ExceptionThreadData _ExceptionThreadData = {0};
+thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData = {0};
 
-void _ExceptionJump(jmp_buf *jumpBuffer)
+void GCInternalExceptionJump(GCInternalExitFunc nextExit)
 {
-    if(jumpBuffer == NULL)
+    if(nextExit != NULL)
+        nextExit();
+
+    if(GCInternalExceptionThreadData.NextBufRef == NULL)
     {
-        PrintException(_ExceptionThreadData.Exception);
+        PrintException(GCInternalExceptionThreadData.Exception);
         printf("Fatal error: no try statement found to catch current exception, aborting\n");
-        exit(_ExceptionThreadData.Exception.Type);
+        exit(GCInternalExceptionThreadData.Exception.Type);
     }
     
-    longjmp(*jumpBuffer, -1);
+    longjmp(*GCInternalExceptionThreadData.NextBufRef, -1);
 }
 
 void PrintException(Exception exception)

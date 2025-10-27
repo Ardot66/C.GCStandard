@@ -17,7 +17,7 @@ void ExceptionRecursionTest(size_t recursion)
     if(throw)
         Throw(EINVAL, ErrorMessage);
 
-    ExitBegin;
+    ExitBegin();
         int detected = 0;
         IfExitException
             detected = 1;
@@ -26,7 +26,7 @@ void ExceptionRecursionTest(size_t recursion)
             TEST(detected, ==, 1);
 
         ExceptionExitsCounted++;
-    ExitEnd;
+    ExitEnd();
 
     throw = 1;
 }
@@ -54,8 +54,8 @@ void TestException()
 
     TEST(exception.Type, ==, ENOMEM)
 
-    ExitBegin;
-    ExitEnd;
+    ExitBegin();
+    ExitEnd();
 
     PrintTestStatus(NULL);
 }

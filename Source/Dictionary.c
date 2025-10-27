@@ -89,12 +89,12 @@ void DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const Di
         DictAddGeneric(&newDictionary, key, value, functions, keySize, valueSize);
     }
 
-    ExitBegin;
+    ExitBegin();
     IfExitException
         free(newDictionary.V);
     else
         free(dictionary->V);
-    ExitEnd;
+    ExitEnd();
 
     *dictionary = newDictionary;
 }
