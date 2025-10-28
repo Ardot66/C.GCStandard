@@ -5,6 +5,8 @@
 #include "GCCollections.h"
 #include "GCException.h"
 
+#define countof(list) (sizeof(list) / sizeof(*list))
+
 ListDefine(int, ListInt);
 
 void TestList()
@@ -50,22 +52,33 @@ void TestList()
     ListFree(&list);
 }
 
+CListDefine(int, CListInt);
+
+void TestCList()
+{
+    CListInt list = CListDefault;
+    Exception exception;
+    TryBegin(exception);
+        size_t insertIndices[] = {0, 0, 0, 2, 4};
+        size_t finalResult[] = {2, 1, 3, 0, 4};
+
+        for(size_t x = 0; x < countof(insertIndices); x++)
+            CListInsert(&list, x, insertIndices[x]);
+
+        TEST(list.Count, ==, 5);
+        for(size_t x = 0; x < countof(insertIndices); x++)
+            TEST(CListGet(&list, x), ==, finalResult[x]);
+    TryEnd;
+
+    if(exception.Type)
+        PrintException(exception);
+    TEST_TYPED(exception.Type, ==, 0, int, "d");
+
+    CListFree(&list);
+}
+
 DictDefine(size_t, size_t, DictIntInt);
  
-#define SIZE_BITS(type) (sizeof(type) * CHAR_BIT)
-typedef size_t ExistsListInt;
-
-static inline ExistsListInt *DictGetExistsList(const DictGeneric *dictionary, const size_t keySize, const size_t valueSize)
-{
-    return (ExistsListInt *)((char *)dictionary->V + (keySize + valueSize) * dictionary->Length);
-}
-
-static inline int DictGetElementExists(const DictGeneric *dictionary, const size_t index, const size_t keySize, const size_t valueSize)
-{
-    ExistsListInt *existsList = DictGetExistsList(dictionary, keySize, valueSize);
-    return (existsList[index / SIZE_BITS(ExistsListInt)] >> (SIZE_BITS(ExistsListInt) - 1 - (index % SIZE_BITS(ExistsListInt)))) & (ExistsListInt)0x1;
-}
-
 size_t DictKey(size_t index)
 {
     size_t keyInit = index * 1023 + 23;
@@ -126,6 +139,7 @@ void TestDictionary()
 void TestCollections()
 {
     TestList();
+    TestCList();
     TestDictionary();
 
     PrintTestStatus(NULL);

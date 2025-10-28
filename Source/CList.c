@@ -66,7 +66,8 @@ void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t
     else
         CListMoveGeneric(list, index, index + rangeCount, list->Count - index, elemSize);
 
-    memcpy(CListIndex(list, index, elemSize), range, elemSize * rangeCount);
+    if(range)
+        memcpy(CListIndex(list, index, elemSize), range, elemSize * rangeCount);
     list->Count += rangeCount;
 }
 

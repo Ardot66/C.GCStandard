@@ -50,6 +50,15 @@ void CListRemoveRangeGeneric(CListGeneric *list, const size_t startIndex, const 
 void CListClearGeneric(CListGeneric *list);
 
 #define M_CListGenericParams(list, ...) (CListGeneric *)list, ## __VA_ARGS__, sizeof(*(list)->V)
+#define CListAdd(list, value) do {CListAddGeneric(M_CListGenericParams(list, NULL)); CListSet(list, list->Count - 1, value);} while (0)
+#define CListAddRange(list, range, rangeCount) CListAddRangeGeneric(M_CListGenericParams(list, range, rangeCount))
+#define CListInsert(list, value, index) do {CListInsertGeneric(M_CListGenericParams(list, NULL, index)); CListSet(list, index, value);} while (0)
+#define CListInsertRange(list, range, rangeCount, index) CListInsertRangeGeneric(M_CListGenericParams(list, range, rangeCount, index))
+#define CListRemoveAt(list, index) CListRemoveRangeGeneric(M_CListGenericParams(list, index, 1))
+#define CListRemoveRange(list, index, count) CListRemoveRangeGeneric(M_CListGenericParams(list, index, count))
+#define CListResize(list, length) CListResizeGeneric(M_CListGenericParams(list, length))
+#define CListClear(list) CListClearGeneric((CListGeneric *)list)
+#define CListFree(list) free((list)->V);
 
 typedef struct DictFunctions
 {
