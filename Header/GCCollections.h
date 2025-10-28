@@ -35,10 +35,21 @@ void ListClearGeneric(ListGeneric *list);
 #define CListDefine(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count; size_t Offset;} typeName
 
 CListDefine(void, CListGeneric);
+#define CListDefault {.V = NULL, .Length = 0, .Count = 0, .Offset = 0}
+
+#define CListGet(list, index) ((list)->V[((index) + (list)->Offset) % (list)->Length])
+#define CListSet(list, index, value) ((list)->V[((index) + (list)->Offset) % (list)->Length] = (value))
+
+void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize);
+void CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize);
+void CListAddRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize);
+void CListInsertGeneric(CListGeneric *list, const void *value, const size_t index, const size_t elemSize);
+void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize);
+void CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize);
+void CListRemoveRangeGeneric(CListGeneric *list, const size_t startIndex, const size_t count, const size_t elemSize);
+void CListClearGeneric(CListGeneric *list);
 
 #define M_CListGenericParams(list, ...) (CListGeneric *)list, ## __VA_ARGS__, sizeof(*(list)->V)
-#define CListGet(list, index) ((list)->V[(index + (list)->Offset) % list->Length])
-#define CListSet(list, index, value) ((list)->V[(index + (list)->Offset) % list->Length] = value)
 
 typedef struct DictFunctions
 {

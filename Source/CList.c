@@ -1,107 +1,111 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <string.h>
-#include "CollectionsPlus.h"
-#include "Try.h"
 
-// static inline void *CListIndex(CListGeneric *list, const size_t index, const size_t elemSize)
-// {
-//     return (char *)list->V + ((index + list->Offset) % list->Length);
-// }
+#include "GCCollections.h"
+#include "GCException.h"
 
-// static inline void CListChangeOffset(CListGeneric *list, const ssize_t amount)
-// {
-//     ssize_t offset = ((ssize_t)list->Offset + amount) % list->Length;
-//     if(offset < 0)
-//         offset += list->Length;
+static inline void *CListIndex(CListGeneric *list, const size_t index, const size_t elemSize)
+{
+    return (char *)list->V + ((index + list->Offset) % list->Length) * elemSize;
+}
 
-//     list->Offset = offset;
-// }
+static inline void CListSetOffset(CListGeneric *list, const ssize_t amount)
+{
+    ssize_t offset = ((ssize_t)list->Offset + amount) % list->Length;
+    if(offset < 0)
+        offset += list->Length;
 
-// void CListMoveGeneric(CListGeneric *list, const size_t startIndex, const size_t endIndex, const size_t amount, const size_t elemSize)
-// {
-//     int direction = startIndex < endIndex;
-//     ssize_t mult = !direction - direction;
-//     ssize_t add = direction * (amount - 1);
+    list->Offset = offset;
+}
 
-//     for(ssize_t x = 0; x < amount; x++)
-//         memcpy(CListIndex(list, endIndex + add + x * mult, elemSize), CListIndex(list, startIndex + add + x * mult, elemSize), elemSize);
-// }
+static inline void CListMoveGeneric(CListGeneric *list, const size_t startIndex, const size_t endIndex, const size_t count, const size_t elemSize)
+{
+    int direction = startIndex < endIndex;
+    ssize_t directionMultiplier = !direction - direction;
 
-// int CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize)
-// {
-//     CListGeneric *temp = realloc(list->V, newLength * elemSize);
+    // Offset added when copying in the reverse direction.
+    ssize_t add = direction * (count - 1);
 
-//     if(temp == NULL)
-//         return errno;
+    for(size_t x = 0; x < count; x++)
+        memcpy(CListIndex(list, endIndex + add + x * directionMultiplier, elemSize), CListIndex(list, startIndex + add + x * directionMultiplier, elemSize), elemSize);
+}
 
-//     list->V = temp;
-//     size_t preloopCount = (list->Length - list->Offset);// * (list->Offset + list->Count > list->Length);
+void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize)
+{
+    ThrowIf(newLength < list->Count, EINVAL);
 
-//     memmove(
-//         (char *)list->V + (newLength - preloopCount) * elemSize,
-//         (char *)list->V + (list->Length - preloopCount) * elemSize,
-//         preloopCount * elemSize
-//     );
+    CListGeneric *temp = realloc(list->V, newLength * elemSize);
+    ThrowIf(temp == NULL, errno);
 
-//     list->Length = newLength;
-//     return 0;
-// }
+    list->V = temp;
+    size_t preloopCount = (list->Length - list->Offset) * (list->Offset + list->Count > list->Length);
 
-// int CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize)
-// {
-//     if(list->Count >= list->Length)
-//     {
-//         int err;
-//         if(err = CListResizeGeneric(list, list->Length * 2 + 1, elemSize)) return err;
-//     }
+    memmove(
+        (char *)list->V + (newLength - preloopCount) * elemSize,
+        (char *)list->V + (list->Length - preloopCount) * elemSize,
+        preloopCount * elemSize
+    );
 
-//     memcpy(CListIndex(list, list->Count, elemSize), value, elemSize);
-//     return 0;
-// }
+    list->Length = newLength;
+}
 
-// int CListInsertGeneric(CListGeneric *list, const void *value, const size_t index, const size_t elemSize)
-// {
-//     if(list->Count >= list->Length)
-//     {
-//         int err;
-//         if(err = CListResizeGeneric(list, list->Length * 2 + 1, elemSize)) return err;
-//     }
+void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
+{
+    ThrowIf(index > list->Count, EINVAL);
 
-//     if(index < list->Count >> 1)
-//     {
-//         CListChangeOffset(list, -1);
-//         CListMoveGeneric(list, 1, 0, index, elemSize);
-//     }
-//     else
-//         CListMoveGeneric(list, index, index + 1, list->Count - index, elemSize);
+    if(list->Count + rangeCount > list->Length)
+        CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2 + 1, elemSize);
 
-//     memcpy(CListIndex(list, index, elemSize), value, elemSize);
-//     list->Count++;
-//     return 0;
-// }
+    // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
+    if(index + (rangeCount >> 1) < list->Count >> 1)
+    {
+        CListSetOffset(list, -(ssize_t)rangeCount);
+        CListMoveGeneric(list, rangeCount, 0, index, elemSize);
+    }
+    else
+        CListMoveGeneric(list, index, index + rangeCount, list->Count - index, elemSize);
 
-// void CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize)
-// {
-//     if(index < list->Count >> 1)
-//     {
-//         CListMoveGeneric(list, 0, 1, index, elemSize);
-//         CListChangeOffset(list, 1);
-//     }
-//     else
-//         CListMoveGeneric(list, index + 1, index, list->Count - index - 1, elemSize);
-// }
+    memcpy(CListIndex(list, index, elemSize), range, elemSize * rangeCount);
+    list->Count += rangeCount;
+}
 
-// int CListInitGeneric(CListGeneric *list, const size_t length, const size_t elemSize)
-// {
-//     list->V = malloc(length * elemSize);
+void CListInsertGeneric(CListGeneric *list, const void *value, const size_t index, const size_t elemSize)
+{
+    CListInsertRangeGeneric(list, value, 1, index, elemSize);
+}
 
-//     if(list->V == NULL)
-//         return errno;
+void CListAddRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize)
+{
+    CListInsertRangeGeneric(list, range, rangeCount, list->Count - 1, elemSize);
+}
 
-//     list->Length = length;
-//     list->Count = 0;
-//     list->Offset = 0;
-//     return 0;
-// }
+void CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize)
+{
+    CListInsertRangeGeneric(list, value, 1, list->Count - 1, elemSize);
+}
 
+void CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_t rangeCount, const size_t elemSize)
+{
+    ThrowIf(index + rangeCount > list->Count, EINVAL);
+
+    // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
+    if(index < list->Count >> 1)
+    {
+        CListMoveGeneric(list, 0, rangeCount, index, elemSize);
+        CListSetOffset(list, rangeCount);
+    }
+    else
+        CListMoveGeneric(list, index + rangeCount, index, list->Count - index - rangeCount, elemSize);
+}
+
+void CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize)
+{
+    CListRemoveRangeGeneric(list, index, 1, elemSize);
+}
+
+void CListClearGeneric(CListGeneric *list)
+{
+    list->Count = 0;
+    list->Offset = 0;
+}
