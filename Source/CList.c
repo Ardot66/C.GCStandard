@@ -10,7 +10,7 @@ static inline void *CListIndex(CListGeneric *list, const size_t index, const siz
     return (char *)list->V + ((index + list->Offset) % list->Length) * elemSize;
 }
 
-static inline void CListSetOffset(CListGeneric *list, const ssize_t amount)
+static inline void CListChangeOffset(CListGeneric *list, const ssize_t amount)
 {
     ssize_t offset = ((ssize_t)list->Offset + amount) % list->Length;
     if(offset < 0)
@@ -60,7 +60,7 @@ void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t
     // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
     if(index + (rangeCount >> 1) < list->Count >> 1)
     {
-        CListSetOffset(list, -(ssize_t)rangeCount);
+        CListChangeOffset(list, -(ssize_t)rangeCount);
         CListMoveGeneric(list, rangeCount, 0, index, elemSize);
     }
     else
@@ -94,10 +94,12 @@ void CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_
     if(index < list->Count >> 1)
     {
         CListMoveGeneric(list, 0, rangeCount, index, elemSize);
-        CListSetOffset(list, rangeCount);
+        CListChangeOffset(list, rangeCount);
     }
     else
         CListMoveGeneric(list, index + rangeCount, index, list->Count - index - rangeCount, elemSize);
+
+    list->Count -= rangeCount;
 }
 
 void CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize)

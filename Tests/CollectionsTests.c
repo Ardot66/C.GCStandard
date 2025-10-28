@@ -59,8 +59,8 @@ void TestCList()
     CListInt list = CListDefault;
     Exception exception;
     TryBegin(exception);
-        size_t insertIndices[] = {0, 0, 0, 2, 4};
-        size_t finalResult[] = {2, 1, 3, 0, 4};
+        int insertIndices[] = {0, 0, 0, 2, 4};
+        int finalResult[] = {2, 1, 3, 0, 4};
 
         for(size_t x = 0; x < countof(insertIndices); x++)
             CListInsert(&list, x, insertIndices[x]);
@@ -68,6 +68,23 @@ void TestCList()
         TEST(list.Count, ==, 5);
         for(size_t x = 0; x < countof(insertIndices); x++)
             TEST(CListGet(&list, x), ==, finalResult[x]);
+
+        int removeIndices[] = {1, 3};
+        int removeResult[] = {2, 3, 0};
+        for(size_t x = 0; x < countof(removeIndices); x++)
+            CListRemoveAt(&list, removeIndices[x]);
+
+        TEST(list.Count, ==, 3);
+        for(size_t x = 0; x < countof(removeResult); x++)
+            TEST(CListGet(&list, x), ==, removeResult[x]);
+
+        int insertRange[] = {1, 2, 3, 4};
+        int insertRangeResult[] = {2, 1, 2, 3, 4, 3, 0};
+        CListInsertRange(&list, insertRange, countof(insertRange), 1);
+
+        TEST(list.Count, ==, countof(insertRangeResult));
+        for(size_t x = 0; x < countof(insertRangeResult); x++)
+            TEST(CListGet(&list, x), ==, insertRangeResult[x]);
     TryEnd;
 
     if(exception.Type)
