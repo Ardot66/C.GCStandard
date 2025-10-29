@@ -2,6 +2,7 @@
 
 void TestException();
 void TestCollections();
+void TestCommandQueue();
 
 int main()
 {
@@ -10,4 +11,7 @@ int main()
 
     printf("\nTesting collections\n---\n");
     TestCollections();
+
+    printf("\nTesting command queue\n--\n");
+    TestCommandQueue();
 }
