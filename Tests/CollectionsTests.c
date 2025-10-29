@@ -12,7 +12,7 @@ ListDefine(int, ListInt);
 void TestList()
 {
     ListInt list = ListDefault;
-    Exception exception;
+    Exception *exception;
     TryBegin(exception);
         for(int x = 0; x < 4; x++)
         {
@@ -45,9 +45,8 @@ void TestList()
             TEST(list.V[x], ==, rangeToAdd[x]);
     TryEnd;
 
-    if(exception.Type)
-        PrintException(exception);
-    TEST_TYPED(exception.Type, ==, 0, int, "d");
+    TEST(exception, ==, NULL, ExceptionPrint(exception););
+    ExceptionFree(exception);
 
     ListFree(&list);
 }
@@ -57,7 +56,7 @@ CListDefine(int, CListInt);
 void TestCList()
 {
     CListInt list = CListDefault;
-    Exception exception;
+    Exception *exception;
     TryBegin(exception);
         int insertIndices[] = {0, 0, 0, 2, 4};
         int finalResult[] = {2, 1, 3, 0, 4};
@@ -87,9 +86,8 @@ void TestCList()
             TEST(CListGet(&list, x), ==, insertRangeResult[x]);
     TryEnd;
 
-    if(exception.Type)
-        PrintException(exception);
-    TEST_TYPED(exception.Type, ==, 0, int, "d");
+    TEST(exception, ==, NULL, ExceptionPrint(exception););
+    ExceptionFree(exception);
 
     CListFree(&list);
 }
@@ -107,7 +105,7 @@ void TestDictionary()
     DictIntInt dict = DictDefault;
     DictFunctions functions = DictDefaultFunctions;
 
-    Exception exception;
+    Exception *exception;
     TryBegin(exception);
         const size_t elements = 20, removeElements = 10;
         for(size_t x = 0; x < elements; x++)
@@ -146,9 +144,8 @@ void TestDictionary()
 
     TryEnd;
 
-    if(exception.Type)
-        PrintException(exception);
-    TEST_TYPED(exception.Type, ==, 0, int, "d");
+    TEST(exception, ==, NULL, ExceptionPrint(exception););
+    ExceptionFree(exception);
 
     DictFree(&dict);
 }

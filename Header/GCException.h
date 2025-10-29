@@ -4,11 +4,17 @@
 #include <setjmp.h>
 #include <stdint.h>
 
+enum GCInternalExceptionConstants
+{
+    GC_INTERNAL_BACKTRACE_FRAMES = 64
+};
+
 typedef struct Exception
 {
     int Type;
     int BacktraceFrames;
-    void **Backtrace;
+    int IsFallbackException;
+    void *Backtrace[GC_INTERNAL_BACKTRACE_FRAMES];
     const char *Message;
     const char *File;
     const char *Function;
@@ -22,14 +28,14 @@ struct GCInternalExceptionThreadData
 {
     jmp_buf *NextBufRef;
     GCInternalExitFunc NextExitFunc;
-    Exception Exception;
+    Exception *Exception;
 };
 
 extern thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData;
 
 [[__noreturn__]]
 void GCInternalExceptionJump(GCInternalExitFunc nextExit);
-void GCInternalSetException(int type, const char *message, uint64_t line, const char *file, const char *function);
+void GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
 // If multiple exit blocks (and thus ExitInits) are placed within the same scope and intersect in any way,
@@ -55,7 +61,7 @@ do {} while (0)
 
 // Used to check if the exit block has been triggered by an exception, which can be useful when freeing
 // resources that would otherwise be returned.
-#define IfExitException if (GCInternalExceptionThreadData.Exception.Type)
+#define IfExitException if (GCInternalExceptionThreadData.Exception)
 
 // Marks the end of an exit block.
 //
@@ -71,12 +77,16 @@ else\
 // try block for handling.
 #define Throw(error, message)\
 do { \
-    GCInternalSetException(error, message, __LINE__, __FILE__, __func__);\
+    GCInternalExceptionCreate(error, message, __LINE__, __FILE__, __func__);\
     GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc);\
 } while (0)
 
 // Throws an existing exception.
-#define ThrowException(exception) Throw((exception).Type, (exception).Message)
+#define ThrowException(exception)\
+do {\
+    GCInternalExceptionThreadData.Exception = (exception);\
+    GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc);\
+}while (0)
 
 // Confirms that a statement is true, throwing an exception otherwise.
 #define ThrowMsgIf(statement, error, message)\
@@ -88,11 +98,11 @@ if(statement)\
 #define ThrowIf(statement, error) ThrowMsgIf(statement, error, "Error detected: (" #statement ")")
 
 // Marks the beginning of a try block, in which any exceptions will be caught and placed in the passed exception variable
-// for handling after the try block ends.
+// for handling after the try block ends. Any non-null exception needs to be freed using ExceptionFree.
 // If an exception occurs in a try block, code execution will immediately fast-forward to the end of the block.
 #define TryBegin(exception)\
 do {\
-    exception = (Exception){0};\
+    exception = NULL;\
     jmp_buf GCInternalTryBuf, *GCInternalNextTryBuf = GCInternalExceptionThreadData.NextBufRef;\
     GCInternalExitFunc GCInternalTryNextExit = GCInternalExceptionThreadData.NextExitFunc;\
     GCInternalExceptionThreadData.NextExitFunc = NULL;\
@@ -101,7 +111,7 @@ do {\
         GCInternalExceptionThreadData.NextBufRef = &GCInternalTryBuf;\
     else { \
         exception = GCInternalExceptionThreadData.Exception; \
-        GCInternalExceptionThreadData.Exception.Type = 0;\
+        GCInternalExceptionThreadData.Exception = NULL;\
         GCInternalExceptionThreadData.NextBufRef = GCInternalNextTryBuf; \
         GCInternalExceptionThreadData.NextExitFunc = GCInternalTryNextExit;\
         break; \
@@ -113,6 +123,7 @@ do {\
 } while (0)
 
 // Neatly prints an exception to the standard output.
-void PrintException(Exception exception);
+void ExceptionPrint(Exception *exception);
+void ExceptionFree(Exception *exception);
 
 #endif

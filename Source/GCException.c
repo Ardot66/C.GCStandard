@@ -1,49 +1,25 @@
 #include "GCException.h"
+#include "GCTime.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData = {0};
-
-enum Constants
-{
-    BACKTRACE_FRAMES = 64
-};
-
-static int InitBacktrace()
-{
-    void ***backtraceDest = &GCInternalExceptionThreadData.Exception.Backtrace;
-    if(*backtraceDest == NULL)
-    {
-        *backtraceDest = malloc(sizeof(void *) * BACKTRACE_FRAMES);
-        if(*backtraceDest == NULL)
-            return -1;
-    }
-
-    return 0;
-}
+Exception GCInternalFallbackException = {.IsFallbackException = 1};
+int GCInternalFallbackExceptionInUse = 0;
 
 #ifdef __WIN32__
 #include <windows.h>
 #include <dbghelp.h>
-void GCInternalBacktrace()
+void GCInternalBacktrace(Exception *exception)
 {
-    if(InitBacktrace()) 
-        return;
-    
     HANDLE process = GetCurrentProcess();
     SymInitialize(process, NULL, TRUE);
-    GCInternalExceptionThreadData.Exception.BacktraceFrames = CaptureStackBackTrace(1, BACKTRACE_FRAMES, GCInternalExceptionThreadData.Exception.Backtrace, NULL);
+    exception->BacktraceFrames = CaptureStackBackTrace(1, GC_INTERNAL_BACKTRACE_FRAMES, exception->Backtrace, NULL);
 }
 
 void GCInternalPrintBacktrace(Exception *exception)
 {
-    if(exception->Backtrace == NULL)
-    {
-        fprintf(stderr, "Unable to print backtrace");
-        return;
-    }
-
     HANDLE process = GetCurrentProcess();
     SYMBOL_INFO *symbol = calloc(1, sizeof(*symbol) + 256 * sizeof(char));
     symbol->MaxNameLen = 255;
@@ -80,28 +56,62 @@ void GCInternalExceptionJump(GCInternalExitFunc nextExit)
 
     if(GCInternalExceptionThreadData.NextBufRef == NULL)
     {
-        PrintException(GCInternalExceptionThreadData.Exception);
+        ExceptionPrint(GCInternalExceptionThreadData.Exception);
         fprintf(stderr, "Fatal error: no try statement found to catch current exception, aborting\n");
-        exit(GCInternalExceptionThreadData.Exception.Type);
+        exit(GCInternalExceptionThreadData.Exception->Type);
     }
     
     longjmp(*GCInternalExceptionThreadData.NextBufRef, -1);
 }
 
-void GCInternalSetException(int type, const char *message, uint64_t line, const char *file, const char *function)
+void GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function)
 {
-    Exception *exception = &GCInternalExceptionThreadData.Exception;
+    Exception *exception = malloc(sizeof(*exception));
+    if(exception == NULL)
+    {
+        for(uint32_t x = 0; GCInternalFallbackExceptionInUse; x++)
+        {
+            Timespec sleep = SecsToTimespec(0.1f);
+            nanosleep(&sleep, NULL);
+
+            if(x > 50)
+            {
+                fprintf(stderr, "Fatal error: unable to allocate or acquire backup exception object, exiting\n");
+                exit(-1);
+            }
+        }
+    
+        GCInternalFallbackExceptionInUse = 1;
+        exception = &GCInternalFallbackException;
+    }
+
     exception->Type = type;
     exception->Message = message;
     exception->Line = line;
     exception->File = file;
     exception->Function = function;
+    exception->IsFallbackException = 0;
 
-    GCInternalBacktrace();
+    GCInternalBacktrace(exception);
+    GCInternalExceptionThreadData.Exception = exception;
 }
 
-void PrintException(Exception exception)
+void ExceptionPrint(Exception *exception)
 {
-    fprintf(stderr, "%s: %s at %s - %s() - Line %zu\n", strerror(exception.Type), exception.Message, exception.File, exception.Function, exception.Line);
-    GCInternalPrintBacktrace(&exception);
+    fprintf(stderr, "%s: %s at %s - %s() - Line %zu\n", strerror(exception->Type), exception->Message, exception->File, exception->Function, exception->Line);
+    GCInternalPrintBacktrace(exception);
+}
+
+void ExceptionFree(Exception *exception)
+{
+    if(exception == NULL)
+        return;
+
+    if(exception->IsFallbackException)
+    {
+        GCInternalFallbackExceptionInUse = 0;
+        return;
+    }
+
+    free(exception);
 }

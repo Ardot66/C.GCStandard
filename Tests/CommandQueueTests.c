@@ -24,12 +24,13 @@ void *CommandQueueThread(void *params)
 {
     ThreadInfo *threadInfo = params;
 
-    Exception exception;
+    Exception *exception;
     TryBegin(exception);
     CommandQueuePush(&threadInfo->Queue, COMMAND_TYPE_SUCCESS, sizeof(CommandParams), CommandParams);
     TryEnd;
 
-    TEST(exception.Type, ==, 0, PrintException(exception); exit(exception.Type););
+    TEST(exception, ==, NULL, ExceptionPrint(exception); exit(exception->Type););
+    ExceptionFree(exception);
 
     pthread_exit(NULL);
     return NULL;
@@ -37,7 +38,7 @@ void *CommandQueueThread(void *params)
 
 void TestCommandQueue()
 {
-    Exception exception;
+    Exception *exception;
     TryBegin(exception);
 
     ThreadInfo info =
@@ -84,7 +85,8 @@ void TestCommandQueue()
     TEST(successful, ==, 1);
     TryEnd;
 
-    TEST(exception.Type, ==, 0, PrintException(exception););
+    TEST(exception, ==, NULL, ExceptionPrint(exception););
+    ExceptionFree(exception);
 
     PrintTestStatus(NULL);
 }

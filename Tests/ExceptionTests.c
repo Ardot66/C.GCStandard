@@ -36,23 +36,26 @@ void TestException()
 {
     ExitInit();
 
-    Exception exception;
+    Exception *exception;
     TryBegin(exception);
         ExceptionRecursionTest(1);
     TryEnd;
 
     TEST(ExceptionExitsCounted, ==, ExceptionRecursions);
-    TEST(exception.Type, ==, EINVAL);
-    TEST(exception.Message, ==, ErrorMessage);
+    TEST(exception->Type, ==, EINVAL);
+    TEST(exception->Message, ==, ErrorMessage);
 
     printf("Testing exception printing, should say: 'Invalid argument: This is an error at Tests/Test.c - ExceptionRecursionTest() - Line 12', followed by a backtrace\n");
-    PrintException(exception);
+    ExceptionPrint(exception);
+    
+    ExceptionFree(exception);
 
     TryBegin(exception);
         ThrowIf(1 == 1, ENOMEM);
     TryEnd;
 
-    TEST(exception.Type, ==, ENOMEM)
+    TEST(exception->Type, ==, ENOMEM)
+    ExceptionFree(exception);
 
     ExitBegin();
     ExitEnd();
