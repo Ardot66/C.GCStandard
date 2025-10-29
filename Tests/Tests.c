@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "GCException.h"
 
 void TestException();
 void TestCollections();

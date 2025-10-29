@@ -27,10 +27,10 @@ Compile: $(DLL) $(TESTS_EXE)
 	$(RUN)
 
 $(DLL): $(SOURCE) $(HEADERS_WILDCARD)/*.h
-	gcc -Wall -Wextra -std=c23 $(COMPILE_FLAGS) -fPIC -shared $(SOURCE) $(HEADERS) -L$(DLL_BIN) -luser32 -ldbghelp $(subst $() , -l,$(DEPEND)) -o $(DLL)
+	gcc -Wall -Wextra -std=c23 $(COMPILE_FLAGS) -fPIC -shared $(SOURCE) $(HEADERS) -L$(DLL_BIN) -lbacktrace $(subst $() , -l,$(DEPEND)) -o $(DLL)
 
 $(TESTS_EXE): $(DLL) $(TESTS) $(HEADERS_WILDCARD)/*.h
-	gcc -Wall -Wextra -std=c23 $(COMPILE_FLAGS) $(TESTS) $(HEADERS) -L $(DLL_BIN) -l$(NAME) -luser32 -ldbghelp $(subst $() , -l,$(DEPEND)) -o $(TESTS_EXE)
+	gcc -Wall -Wextra -std=c23 $(COMPILE_FLAGS) $(TESTS) $(HEADERS) -L $(DLL_BIN) -l$(NAME) $(subst $() , -l,$(DEPEND)) -o $(TESTS_EXE)
 
 Clean:
 	rm $(TESTS_EXE) $(DLL)

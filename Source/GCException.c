@@ -3,51 +3,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <backtrace.h>
 
 thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData = {0};
-Exception GCInternalFallbackException = {.IsFallbackException = 1};
-int GCInternalFallbackExceptionInUse = 0;
-
-#ifdef __WIN32__
-#include <windows.h>
-#include <dbghelp.h>
-void GCInternalBacktrace(Exception *exception)
+static Exception FallbackException = {.IsFallbackException = 1};
+static int FallbackExceptionInUse = 0;
+static struct backtrace_state *BacktraceState = NULL;
+    
+static struct backtrace_state *GetBacktraceState()
 {
-    HANDLE process = GetCurrentProcess();
-    SymInitialize(process, NULL, TRUE);
-    exception->BacktraceFrames = CaptureStackBackTrace(1, GC_INTERNAL_BACKTRACE_FRAMES, exception->Backtrace, NULL);
+    // TODO: set up error callbacks.
+    if(BacktraceState == NULL)
+        BacktraceState = backtrace_create_state(NULL, 1, NULL, NULL);
+
+    return BacktraceState;
 }
-
-void GCInternalPrintBacktrace(Exception *exception)
-{
-    HANDLE process = GetCurrentProcess();
-    SYMBOL_INFO *symbol = calloc(1, sizeof(*symbol) + 256 * sizeof(char));
-    symbol->MaxNameLen = 255;
-    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-
-    for(int x = 0; x < exception->BacktraceFrames; x++)
-    {
-        SymFromAddr(process, (DWORD64)(exception->Backtrace[x]), 0, symbol);
-        // Checking that x > 0 here to skip the first frame of the backtrace, which is always GCInternalExceptionJump.
-        // For some reason SymFromAddr does not work if skipping this first frame.
-        if(x > 0)
-            fprintf(stderr, "%i: %s() - 0x%p\n", exception->BacktraceFrames - x - 1, symbol->Name, (void *)symbol->Address);
-    }
-
-    free(symbol);
-}
-#elif __GLIBC__ 
-#include <execinfo.h>
-void GCInternalBacktrace()
-{
-    if(InitBacktrace())
-        return;
-
-    GCInternalExceptionThreadData.Exception.BacktraceFrames = backtrace(GCInternalExceptionThreadData.Exception.Backtrace, BACKTRACE_FRAMES);
-}
-
-// TODO, set up backtrace printing for glibc.
-#endif
 
 void GCInternalExceptionJump(GCInternalExitFunc nextExit)
 {
@@ -64,12 +34,27 @@ void GCInternalExceptionJump(GCInternalExitFunc nextExit)
     longjmp(*GCInternalExceptionThreadData.NextBufRef, -1);
 }
 
+static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
+{
+    (void)filename; (void)lineno;
+
+    Exception *exception = data;
+    if(exception->BacktraceFrames >= GC_INTERNAL_BACKTRACE_FRAMES)
+        return 1;
+
+    exception->Backtrace[exception->BacktraceFrames] = pc;
+    exception->BacktraceFrames++;
+
+    // Stop the backtrace at main.
+    return strcmp(function, "main") == 0;
+}
+
 void GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function)
 {
     Exception *exception = malloc(sizeof(*exception));
     if(exception == NULL)
     {
-        for(uint32_t x = 0; GCInternalFallbackExceptionInUse; x++)
+        for(uint32_t x = 0; FallbackExceptionInUse; x++)
         {
             Timespec sleep = SecsToTimespec(0.1f);
             nanosleep(&sleep, NULL);
@@ -81,25 +66,40 @@ void GCInternalExceptionCreate(int type, const char *message, uint64_t line, con
             }
         }
     
-        GCInternalFallbackExceptionInUse = 1;
-        exception = &GCInternalFallbackException;
+        FallbackExceptionInUse = 1;
+        exception = &FallbackException;
     }
+    else
+        exception->IsFallbackException = 0;
 
     exception->Type = type;
     exception->Message = message;
     exception->Line = line;
     exception->File = file;
     exception->Function = function;
-    exception->IsFallbackException = 0;
+    exception->BacktraceFrames = 0;
 
-    GCInternalBacktrace(exception);
+    backtrace_full(GetBacktraceState(), 1, BacktraceCallback, NULL, exception);
     GCInternalExceptionThreadData.Exception = exception;
+}
+
+static int BacktracePrintCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
+{
+    (void)pc;
+    int *depth = data;
+    fprintf(stderr, "%d - %s - %s() - Line %d\n", *depth, filename , function, lineno);
+    return 0;
 }
 
 void ExceptionPrint(Exception *exception)
 {
     fprintf(stderr, "%s: %s at %s - %s() - Line %zu\n", strerror(exception->Type), exception->Message, exception->File, exception->Function, exception->Line);
-    GCInternalPrintBacktrace(exception);
+
+    for(int x = 0; x < exception->BacktraceFrames; x++)
+    {
+        int depth = exception->BacktraceFrames - x - 1;
+        backtrace_pcinfo(GetBacktraceState(), exception->Backtrace[x], BacktracePrintCallback, NULL, &depth);
+    }
 }
 
 void ExceptionFree(Exception *exception)
@@ -109,7 +109,7 @@ void ExceptionFree(Exception *exception)
 
     if(exception->IsFallbackException)
     {
-        GCInternalFallbackExceptionInUse = 0;
+        FallbackExceptionInUse = 0;
         return;
     }
 

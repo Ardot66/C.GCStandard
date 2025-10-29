@@ -14,8 +14,10 @@ typedef struct Exception
     int Type;
     int BacktraceFrames;
     int IsFallbackException;
-    void *Backtrace[GC_INTERNAL_BACKTRACE_FRAMES];
+    uintptr_t Backtrace[GC_INTERNAL_BACKTRACE_FRAMES];
     const char *Message;
+
+    // Line information is still kept as backtraces may fail.
     const char *File;
     const char *Function;
     uint64_t Line;
@@ -125,5 +127,6 @@ do {\
 // Neatly prints an exception to the standard output.
 void ExceptionPrint(Exception *exception);
 void ExceptionFree(Exception *exception);
+void ExceptionInit();
 
 #endif
