@@ -78,12 +78,12 @@ void CListInsertGeneric(CListGeneric *list, const void *value, const size_t inde
 
 void CListAddRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize)
 {
-    CListInsertRangeGeneric(list, range, rangeCount, list->Count - 1, elemSize);
+    CListInsertRangeGeneric(list, range, rangeCount, list->Count, elemSize);
 }
 
 void CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize)
 {
-    CListInsertRangeGeneric(list, value, 1, list->Count - 1, elemSize);
+    CListInsertRangeGeneric(list, value, 1, list->Count, elemSize);
 }
 
 void CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_t rangeCount, const size_t elemSize)
