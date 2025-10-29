@@ -7,10 +7,12 @@
 typedef struct Exception
 {
     int Type;
+    int BacktraceFrames;
+    void **Backtrace;
     const char *Message;
-    uint64_t Line;
     const char *File;
     const char *Function;
+    uint64_t Line;
 } Exception;
 
 typedef void (* GCInternalExitFunc)();
@@ -27,6 +29,7 @@ extern thread_local struct GCInternalExceptionThreadData GCInternalExceptionThre
 
 [[__noreturn__]]
 void GCInternalExceptionJump(GCInternalExitFunc nextExit);
+void GCInternalSetException(int type, const char *message, uint64_t line, const char *file, const char *function);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
 // If multiple exit blocks (and thus ExitInits) are placed within the same scope and intersect in any way,
@@ -68,7 +71,7 @@ else\
 // try block for handling.
 #define Throw(error, message)\
 do { \
-    GCInternalExceptionThreadData.Exception = (Exception){.Type = error, .Message = message, .Line = __LINE__, .File = __FILE__, .Function = __func__};\
+    GCInternalSetException(error, message, __LINE__, __FILE__, __func__);\
     GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc);\
 } while (0)
 
@@ -98,7 +101,7 @@ do {\
         GCInternalExceptionThreadData.NextBufRef = &GCInternalTryBuf;\
     else { \
         exception = GCInternalExceptionThreadData.Exception; \
-        GCInternalExceptionThreadData.Exception = (Exception){0};\
+        GCInternalExceptionThreadData.Exception.Type = 0;\
         GCInternalExceptionThreadData.NextBufRef = GCInternalNextTryBuf; \
         GCInternalExceptionThreadData.NextExitFunc = GCInternalTryNextExit;\
         break; \
