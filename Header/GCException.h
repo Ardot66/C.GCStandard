@@ -23,7 +23,7 @@ typedef struct Exception
     uint64_t Line;
 } Exception;
 
-typedef void (* GCInternalExitFunc)();
+typedef void (* GCInternalExitFunc)(Exception *gcInternalException);
 
 // Thread local data needs to be wrapped in a single struct, weird overlapping stuff was happening otherwise.
 struct GCInternalExceptionThreadData
@@ -36,8 +36,8 @@ struct GCInternalExceptionThreadData
 extern thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData;
 
 [[__noreturn__]]
-void GCInternalExceptionJump(GCInternalExitFunc nextExit);
-void GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function);
+void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception);
+Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
 // If multiple exit blocks (and thus ExitInits) are placed within the same scope and intersect in any way,
@@ -46,7 +46,7 @@ void GCInternalExceptionCreate(int type, const char *message, uint64_t line, con
 // The identifier parameter must only be set when multiple exit blocks exist within a single scope,
 // in which case all but one exit block must have a unique identifier.
 #define ExitInit(identifier) \
-auto void GCInternalExit ## identifier();\
+auto void GCInternalExit ## identifier(Exception *);\
 GCInternalExitFunc GCInternalNextExit ## identifier = GCInternalExceptionThreadData.NextExitFunc; \
 GCInternalExceptionThreadData.NextExitFunc = GCInternalExit ## identifier
 
@@ -57,30 +57,28 @@ GCInternalExceptionThreadData.NextExitFunc = GCInternalExit ## identifier
 //
 // See ExitInit for the use case of the identifier parameter, which can usually be left empty.
 #define ExitBegin(identifier)\
-GCInternalExit ## identifier();\
-void GCInternalExit ## identifier() {\
+GCInternalExit ## identifier(NULL);\
+void GCInternalExit ## identifier(Exception *gcInternalException) {\
+    GCInternalExceptionThreadData.NextExitFunc = GCInternalNextExit ## identifier;\
 do {} while (0)
 
 // Used to check if the exit block has been triggered by an exception, which can be useful when freeing
 // resources that would otherwise be returned.
-#define IfExitException if (GCInternalExceptionThreadData.Exception)
+#define IfExitException if (gcInternalException)
 
 // Marks the end of an exit block.
 //
 // See ExitInit for the use case of the identifier parameter, which can usually be left empty.
 #define ExitEnd(identifier) \
-IfExitException\
-    GCInternalExceptionJump(GCInternalNextExit ## identifier);\
-else\
-    GCInternalExceptionThreadData.NextExitFunc = GCInternalNextExit ## identifier;\
+    IfExitException\
+        GCInternalExceptionJump(GCInternalNextExit ## identifier, gcInternalException);\
 } do {} while (0)
 
 // Throws an exception, automatically exiting the current scope and jumping to the most recent exit block for cleanup or
 // try block for handling.
 #define Throw(error, message)\
 do { \
-    GCInternalExceptionCreate(error, message, __LINE__, __FILE__, __func__);\
-    GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc);\
+    GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc, GCInternalExceptionCreate(error, message, __LINE__, __FILE__, __func__));\
 } while (0)
 
 // Throws an existing exception.
@@ -127,6 +125,5 @@ do {\
 // Neatly prints an exception to the standard output.
 void ExceptionPrint(Exception *exception);
 void ExceptionFree(Exception *exception);
-void ExceptionInit();
 
 #endif

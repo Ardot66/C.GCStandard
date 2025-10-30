@@ -19,10 +19,10 @@ static struct backtrace_state *GetBacktraceState()
     return BacktraceState;
 }
 
-void GCInternalExceptionJump(GCInternalExitFunc nextExit)
+void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception)
 {
     if(nextExit != NULL)
-        nextExit();
+        nextExit(exception);
 
     if(GCInternalExceptionThreadData.NextBufRef == NULL)
     {
@@ -49,9 +49,36 @@ static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int
     return strcmp(function, "main") == 0;
 }
 
-void GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function)
+Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function)
 {
+    // If an exception already exists, then this exception must be occurring within an exit block, and thus must be handled
+    // as a special case. Because only one exception can be handled at once, the exception that would typically be created
+    // here will be printed straight away with a special warning message and the older exception will be propagated along.
+    if(GCInternalExceptionThreadData.Exception)
+    {
+        Exception tempException = 
+        {
+            .Type = type,
+            .Message = message,
+            .Line = line,
+            .File = file,
+            .Function = function,
+            .BacktraceFrames = 0
+        };
+
+        backtrace_full(GetBacktraceState(), 1, BacktraceCallback, NULL, &tempException);
+        fprintf(
+            stderr,
+            "Warning: The following exception was thrown within an exit block while another exception was unwinding the stack, and as such the block terminated early, "
+            "potentially skipping object destruction. Due to the design of GCException, the inciting exception will be printed immediately and not handled directly.\n"
+        );
+        ExceptionPrint(&tempException);
+
+        return GCInternalExceptionThreadData.Exception;
+    }
+
     Exception *exception = malloc(sizeof(*exception));
+
     if(exception == NULL)
     {
         for(uint32_t x = 0; FallbackExceptionInUse; x++)
@@ -80,7 +107,9 @@ void GCInternalExceptionCreate(int type, const char *message, uint64_t line, con
     exception->BacktraceFrames = 0;
 
     backtrace_full(GetBacktraceState(), 1, BacktraceCallback, NULL, exception);
+
     GCInternalExceptionThreadData.Exception = exception;
+    return exception;
 }
 
 static int BacktracePrintCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
