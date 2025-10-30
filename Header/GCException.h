@@ -23,7 +23,8 @@ typedef struct Exception
     uint64_t Line;
 } Exception;
 
-typedef void (* GCInternalExitFunc)(Exception *gcInternalException);
+typedef void (* GCInternalExitFuncBox)();
+typedef GCInternalExitFuncBox (* GCInternalExitFunc)(Exception *gcInternalException);
 
 // Thread local data needs to be wrapped in a single struct, weird overlapping stuff was happening otherwise.
 struct GCInternalExceptionThreadData
@@ -46,7 +47,7 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
 // The identifier parameter must only be set when multiple exit blocks exist within a single scope,
 // in which case all but one exit block must have a unique identifier.
 #define ExitInit(identifier) \
-auto void GCInternalExit ## identifier(Exception *);\
+auto GCInternalExitFuncBox GCInternalExit ## identifier(Exception *);\
 GCInternalExitFunc GCInternalNextExit ## identifier = GCInternalExceptionThreadData.NextExitFunc; \
 GCInternalExceptionThreadData.NextExitFunc = GCInternalExit ## identifier
 
@@ -58,7 +59,8 @@ GCInternalExceptionThreadData.NextExitFunc = GCInternalExit ## identifier
 // See ExitInit for the use case of the identifier parameter, which can usually be left empty.
 #define ExitBegin(identifier)\
 GCInternalExit ## identifier(NULL);\
-void GCInternalExit ## identifier(Exception *gcInternalException) {\
+GCInternalExitFuncBox GCInternalExit ## identifier(Exception *gcInternalException) {\
+    (void)gcInternalException;\
     GCInternalExceptionThreadData.NextExitFunc = GCInternalNextExit ## identifier;\
 do {} while (0)
 
@@ -70,8 +72,7 @@ do {} while (0)
 //
 // See ExitInit for the use case of the identifier parameter, which can usually be left empty.
 #define ExitEnd(identifier) \
-    IfExitException\
-        GCInternalExceptionJump(GCInternalNextExit ## identifier, gcInternalException);\
+    return (GCInternalExitFuncBox)GCInternalNextExit ## identifier;\
 } do {} while (0)
 
 // Throws an exception, automatically exiting the current scope and jumping to the most recent exit block for cleanup or

@@ -21,8 +21,8 @@ static struct backtrace_state *GetBacktraceState()
 
 void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception)
 {
-    if(nextExit != NULL)
-        nextExit(exception);
+    while(nextExit != NULL)
+        nextExit = (GCInternalExitFunc)nextExit(exception);
 
     if(GCInternalExceptionThreadData.NextBufRef == NULL)
     {
