@@ -39,7 +39,7 @@ static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int
     (void)filename; (void)lineno;
 
     Exception *exception = data;
-    if(exception->BacktraceFrames >= GC_INTERNAL_BACKTRACE_FRAMES)
+    if(function == NULL || exception->BacktraceFrames >= GC_INTERNAL_BACKTRACE_FRAMES)
         return 1;
 
     exception->Backtrace[exception->BacktraceFrames] = pc;
