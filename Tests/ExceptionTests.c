@@ -47,7 +47,13 @@ void TestException()
 
     printf("Testing exception printing, should say: 'Invalid argument: This is an error at Tests/Test.c - ExceptionRecursionTest() - Line 12', followed by a backtrace\n");
     ExceptionPrint(exception);
-    
+
+    Exception *exception2;
+    TryBegin(exception2);
+        ThrowException(exception);
+    TryEnd;
+
+    TEST(exception2, ==, exception);
     ExceptionFree(exception);
 
     TryBegin(exception);

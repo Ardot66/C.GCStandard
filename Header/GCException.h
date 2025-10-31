@@ -86,7 +86,7 @@ do { \
 #define ThrowException(exception)\
 do {\
     GCInternalExceptionThreadData.Exception = (exception);\
-    GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc);\
+    GCInternalExceptionJump(GCInternalExceptionThreadData.NextExitFunc, GCInternalExceptionThreadData.Exception);\
 }while (0)
 
 // Confirms that a statement is true, throwing an exception otherwise.
