@@ -60,17 +60,16 @@ void TestCommandQueue()
 
         CommandQueueLock(&info.Queue);
 
-        CommandHeader *command = CommandQueueGetNext(&info.Queue);
-        if(command != NULL)
+        uint32_t command;
+        if(!CommandQueuePop(&info.Queue, &command))
         {
-            if(command->Type == COMMAND_TYPE_SUCCESS)
+            if(command == COMMAND_TYPE_SUCCESS)
             {
                 successful = 1;
-                TEST(command->ParamSize, ==, sizeof(CommandParams));
-                int *params = (int *)command->Params;
+                int paramsDest[sizeof(CommandParams) / sizeof(*CommandParams)];
+                CommandQueuePopParam(&info.Queue, sizeof(CommandParams), paramsDest);
                 for(size_t x = 0; x < sizeof(CommandParams) / sizeof(*CommandParams); x++)
-                    TEST(params[x], ==, CommandParams[x]);
-                CommandQueueRemoveNext(&info.Queue);
+                    TEST(paramsDest[x], ==, CommandParams[x]);
             }
             else 
                 break;

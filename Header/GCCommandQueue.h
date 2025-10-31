@@ -15,26 +15,26 @@ typedef struct CommandQueue
 
 static const CommandQueue CommandQueueDefault = {.List = ListDefault, .Mutex = PTHREAD_MUTEX_INITIALIZER};
 
-typedef struct CommandHeader
-{
-    uint32_t Type;
-    uint32_t ParamSize;
-    char Params[];
-} CommandHeader;
+// Pushes a new command to the end of the queue. Passed params will be copied into the queue in the process.
+// Automatically locks and unlocks the command queue.
+void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const size_t paramCount, const size_t *paramSizes, const void **params);
 
 // Pushes a new command to the end of the queue. Passed params will be copied into the queue in the process.
+// Automatically locks and unlocks the command queue.
 void CommandQueuePush(CommandQueue *queue, const uint32_t command, const size_t paramSize, const void *params);
+
+// Used to control the command queue's internal mutex. Should only be used around CommandQueuePop commands, as CommandQueuePush
+// commands automatically handle locking and unlocking.
 void CommandQueueLock(CommandQueue *queue);
 void CommandQueueUnlock(CommandQueue *queue);
 
-// Gets the next command in the queue. Meant to be paired with CommandQueueClearNext.
-// Requires that the command queue be manually locked before use. The returned pointer is part of the queue,
-// so it will no longer be valid after the queue is unlocked or CommandQueueClearNext is called.
-CommandHeader *CommandQueueGetNext(CommandQueue *queue);
+// Pops the oldest command off of the queue. Just obtains the command's code, returning zero on success and -1 if no commands are available.
+// To get passed parameters, see CommandQueuePopExtra.
+int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest);
 
-// Removes the next command in the queue, which is always last command obtained with CommandQueueGetNext.
-// Requires that the command queue be manually locked before use.
-void CommandQueueRemoveNext(CommandQueue *queue);
+// Pops parameters passed into a command. ParamDest must be a buffer capable of containing paramSize bytes.
+void CommandQueuePopParam(CommandQueue *queue, const size_t paramSize, void *paramDest);
+
 void CommandQueueFree(CommandQueue *queue);
 
 #endif
