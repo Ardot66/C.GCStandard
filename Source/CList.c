@@ -4,6 +4,7 @@
 
 #include "GCCollections.h"
 #include "GCException.h"
+#include "GCMemory.h"
 
 static inline void *CListIndex(CListGeneric *list, const size_t index, const size_t elemSize)
 {
@@ -35,8 +36,7 @@ void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t
 {
     ThrowIf(newLength < list->Count, EINVAL);
 
-    CListGeneric *temp = realloc(list->V, newLength * elemSize);
-    ThrowIf(temp == NULL, errno);
+    CListGeneric *temp = GCRealloc(list->V, newLength * elemSize);
 
     list->V = temp;
     size_t preloopCount = (list->Length - list->Offset) * (list->Offset + list->Count > list->Length);

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <backtrace.h>
 
-thread_local struct GCInternalExceptionThreadData GCInternalExceptionThreadData = {0};
 static Exception FallbackException = {.IsFallbackException = 1};
 static int FallbackExceptionInUse = 0;
 static struct backtrace_state *BacktraceState = NULL;
@@ -24,14 +23,14 @@ void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception)
     while(nextExit != NULL)
         nextExit = (GCInternalExitFunc)nextExit(exception);
 
-    if(GCInternalExceptionThreadData.NextBufRef == NULL)
+    if(GCInternalThreadData.NextBufRef == NULL)
     {
-        ExceptionPrint(GCInternalExceptionThreadData.Exception);
+        ExceptionPrint(GCInternalThreadData.Exception);
         fprintf(stderr, "Fatal error: no try statement found to catch current exception, aborting\n");
-        exit(GCInternalExceptionThreadData.Exception->Type);
+        exit(GCInternalThreadData.Exception->Type);
     }
     
-    longjmp(*GCInternalExceptionThreadData.NextBufRef, -1);
+    longjmp(*GCInternalThreadData.NextBufRef, -1);
 }
 
 static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
@@ -54,7 +53,7 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
     // If an exception already exists, then this exception must be occurring within an exit block, and thus must be handled
     // as a special case. Because only one exception can be handled at once, the exception that would typically be created
     // here will be printed straight away with a special warning message and the older exception will be propagated along.
-    if(GCInternalExceptionThreadData.Exception)
+    if(GCInternalThreadData.Exception)
     {
         Exception tempException = 
         {
@@ -74,7 +73,7 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
         );
         ExceptionPrint(&tempException);
 
-        return GCInternalExceptionThreadData.Exception;
+        return GCInternalThreadData.Exception;
     }
 
     Exception *exception = malloc(sizeof(*exception));
@@ -108,7 +107,7 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
 
     backtrace_full(GetBacktraceState(), 1, BacktraceCallback, NULL, exception);
 
-    GCInternalExceptionThreadData.Exception = exception;
+    GCInternalThreadData.Exception = exception;
     return exception;
 }
 

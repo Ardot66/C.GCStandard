@@ -2,6 +2,7 @@
 #include <string.h>
 #include "GCCollections.h"
 #include "GCException.h"
+#include "GCMemory.h"
 
 void ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize)
 {
@@ -16,8 +17,7 @@ void ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize
 
 void ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
-    ListGeneric *temp = realloc(list->V, newLength * elemSize);
-    ThrowIf(!temp, errno);
+    ListGeneric *temp = GCRealloc(list->V, newLength * elemSize);
 
     list->V = temp;
     list->Length = newLength;

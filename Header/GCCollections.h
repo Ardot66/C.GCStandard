@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#include "GCMemory.h"
+
 #define ListDefine(type, typeName) typedef struct typeName {type *V; size_t Length; size_t Count;} typeName
 
 ListDefine(void, ListGeneric);
@@ -28,7 +30,7 @@ void ListClearGeneric(ListGeneric *list);
 #define ListRemoveRange(list, index, count) ListRemoveRangeGeneric(M_ListGenericParams(list, index, count))
 #define ListResize(list, length) ListResizeGeneric(M_ListGenericParams(list, length))
 #define ListClear(list) ListClearGeneric((ListGeneric *)list)
-#define ListFree(list) free((list)->V);
+#define ListFree(list) GCFree((list)->V);
 
 #define ListValid(list) ((list) != NULL && (list)->V != NULL)
 
@@ -58,7 +60,7 @@ void CListClearGeneric(CListGeneric *list);
 #define CListRemoveRange(list, index, count) CListRemoveRangeGeneric(M_CListGenericParams(list, index, count))
 #define CListResize(list, length) CListResizeGeneric(M_CListGenericParams(list, length))
 #define CListClear(list) CListClearGeneric((CListGeneric *)list)
-#define CListFree(list) free((list)->V);
+#define CListFree(list) GCFree((list)->V);
 
 typedef struct DictFunctions
 {

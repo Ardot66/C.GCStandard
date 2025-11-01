@@ -1,5 +1,6 @@
 #include "GCCollections.h"
 #include "GCException.h"
+#include "GCMemory.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,7 +67,7 @@ ssize_t DictIndexOfGeneric(const DictGeneric*dictionary, const void *key, const 
 
 void DictFreeGeneric(DictGeneric *dictionary)
 {
-    free(dictionary->V);
+    GCFree(dictionary->V);
 }
 
 void DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const DictFunctions functions, const size_t keySize, const size_t valueSize)
@@ -76,8 +77,7 @@ void DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const Di
 
     newDictionary.Count = 0;
     newDictionary.Length = newLength;
-    newDictionary.V = malloc(DictGetSize(newLength, keySize, valueSize));
-    ThrowIf(!newDictionary.V, errno);
+    newDictionary.V = GCMalloc(DictGetSize(newLength, keySize, valueSize));
 
     memset(DictGetExistsList(&newDictionary, keySize, valueSize), 0, DictGetExistsListCount(newDictionary.Length) * sizeof(ExistsListInt));
 
@@ -91,9 +91,9 @@ void DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const Di
 
     ExitBegin();
     IfExitException
-        free(newDictionary.V);
+        GCFree(newDictionary.V);
     else
-        free(dictionary->V);
+        GCFree(dictionary->V);
     ExitEnd();
 
     *dictionary = newDictionary;
