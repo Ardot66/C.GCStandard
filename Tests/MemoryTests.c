@@ -7,7 +7,7 @@ void TestMemory()
 {
     Exception *exception;
     TryBegin(exception);
-        GCWatchHeap();
+        GCWatchHeap(0);
 
         const size_t allocateCount = 10;
         void *allocatedPtrs[allocateCount];

@@ -53,32 +53,49 @@ void GCSetFreeCallback(void (*callback)(void *ptr))
 typedef void (*Func)();
 DictDefine(Func, GCAllocationData, DictFunctionAllocationData);
 static DictFunctionAllocationData HeapDict = DictDefault;
+static size_t BacktraceCount = 0;
 static const DictFunctions HeapDictFunctions = DictDefaultFunctions;
 static pthread_mutex_t HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int GCWatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
 {
     (void)lineno;
-    if(filename == NULL || function == NULL)
+    if(filename == NULL && function == NULL && lineno == 0)
         return 1;
 
     if(strcmp(__FILE__, filename) == 0)
         return 0;
 
     GCAllocationData *allocData = data;
-    allocData->PC = pc;
-    return 1;
+    if(allocData->PC == (uintptr_t)NULL)
+    {
+        allocData->PC = pc;
+        return 0;
+    }
+
+    if(allocData->ExtraPCs == NULL || allocData->ExtraPCs->Count >= BacktraceCount)
+        return 1;
+
+    allocData->ExtraPCs->PCs[allocData->ExtraPCs->Count++] = pc;
+    return strcmp("main", function) == 0;
 }
 
 static void GCWatchHeapMallocCallback(void *ptr, const size_t size)
 {
-    GCAllocationData data = {.Size = size};
+    GCAllocationData data = 
+    {
+        .Size = size, 
+        .PC = (uintptr_t)NULL, 
+        .ExtraPCs = BacktraceCount == 0 ? NULL : GCMalloc(sizeof(GCAllocationExtraPCData) + sizeof(uintptr_t) * BacktraceCount)
+    };
     backtrace_full(GCInternalGetBacktraceState(), 2, GCWatchHeapBacktraceCallback, NULL, &data);
 
     pthread_mutex_lock(&HeapDictMutex);
     ExitInit();
     DictAdd(&HeapDict, ptr, data, HeapDictFunctions);
     ExitBegin();
+        IfExitException
+            GCFree(data.ExtraPCs);
         pthread_mutex_unlock(&HeapDictMutex);
     ExitEnd();
 }
@@ -109,11 +126,12 @@ static void GCWatchHeapFreeCallback(void *ptr)
         pthread_mutex_unlock(&HeapDictMutex);
         return;
     }
+    GCFree((DictGetValue(&HeapDict, index))->ExtraPCs);
     DictRemove(&HeapDict, index, HeapDictFunctions);
     pthread_mutex_unlock(&HeapDictMutex);
 }
 
-void GCWatchHeap()
+void GCWatchHeap(size_t backtraceCount)
 {
     // Initializing backtrace state here to avoid a potential race condition in multithreaded programs.
     GCInternalGetBacktraceState();
@@ -121,12 +139,18 @@ void GCWatchHeap()
     GCSetMallocCallback(GCWatchHeapMallocCallback);
     GCSetReallocCallback(GCWatchHeapReallocCallback);
     GCSetFreeCallback(GCWatchHeapFreeCallback);
+    BacktraceCount = backtraceCount;
 }
 
 void GCStopWatchingHeap()
 {
     GCSetMallocCallback(NULL);
     GCSetFreeCallback(NULL);
+
+    void *ptr;
+    GCAllocationData data;
+    for(size_t x = 0; (ptr = GCIterateHeap(&x, &data)) != NULL; x++)
+        GCFree(data.ExtraPCs);
 
     // Not locking the dictionary here because there really should not be stuff going on
     // in other threads when this function is called anyways.
@@ -152,22 +176,16 @@ void *GCIterateHeap(size_t *index, GCAllocationData *data)
     return NULL;
 }
 
-typedef struct GCPrintHeapPCInfoCallbackParams
-{
-    void *Ptr;
-    GCAllocationData *Data;
-} GCPrintHeapPCInfoCallbackParams;
-
 static int GCPrintHeapPCInfoCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
 {
+    (void)data;
     (void)pc;
     if(filename == NULL)
         filename = "file not found";
     if(function == NULL)
         function = "function not found";
 
-    GCPrintHeapPCInfoCallbackParams *params = data;
-    printf("   %p (%5zu bytes) allocated at '%s' - %s() - line %d\n", params->Ptr, params->Data->Size, filename, function, lineno);
+    printf("      %s - %s() - line %d\n", filename, function, lineno);
     return 0;
 }
 
@@ -175,17 +193,15 @@ void GCPrintHeap()
 {
     printf("Printing heap contents:\n");
 
-    size_t index = 0;
     void *ptr;
     GCAllocationData data;
-    while((ptr = GCIterateHeap(&index, &data)) != NULL)
+    for(size_t index = 0; (ptr = GCIterateHeap(&index, &data)) != NULL; index++)
     {
-        GCPrintHeapPCInfoCallbackParams params = {
-            .Ptr = ptr,
-            .Data = &data
-        };
-        backtrace_pcinfo(GCInternalGetBacktraceState(), data.PC, GCPrintHeapPCInfoCallback, NULL, &params);
-        index++;
+        printf("   %p (%zu bytes) allocated at:\n", ptr, data.Size);
+        backtrace_pcinfo(GCInternalGetBacktraceState(), data.PC, GCPrintHeapPCInfoCallback, NULL, NULL);
+        if(data.ExtraPCs != NULL)
+            for(size_t x = 0; x < data.ExtraPCs->Count; x++)
+                backtrace_pcinfo(GCInternalGetBacktraceState(), data.ExtraPCs->PCs[x], GCPrintHeapPCInfoCallback, NULL, NULL);
     }
 }
 
