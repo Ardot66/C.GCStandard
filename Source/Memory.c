@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <backtrace.h>
+#include <pthread.h>
 
 // Custom functions for overriding the default malloc and free functions.
 static void *(*CustomAllocator)(const size_t size) = NULL;
@@ -51,8 +52,9 @@ void GCSetFreeCallback(void (*callback)(void *ptr))
 
 typedef void (*Func)();
 DictDefine(Func, GCAllocationData, DictFunctionAllocationData);
-DictFunctionAllocationData HeapDict = DictDefault;
-const DictFunctions HeapDictFunctions = DictDefaultFunctions;
+static DictFunctionAllocationData HeapDict = DictDefault;
+static const DictFunctions HeapDictFunctions = DictDefaultFunctions;
+static pthread_mutex_t HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int GCWatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
 {
@@ -72,11 +74,19 @@ static void GCWatchHeapMallocCallback(void *ptr, const size_t size)
 {
     GCAllocationData data = {.Size = size};
     backtrace_full(GCInternalGetBacktraceState(), 2, GCWatchHeapBacktraceCallback, NULL, &data);
+
+    pthread_mutex_lock(&HeapDictMutex);
+    ExitInit();
     DictAdd(&HeapDict, ptr, data, HeapDictFunctions);
+    ExitBegin();
+        pthread_mutex_unlock(&HeapDictMutex);
+    ExitEnd();
 }
 
 static void GCWatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t size)
 {
+    pthread_mutex_lock(&HeapDictMutex);
+    ExitInit();
     ssize_t oldIndex = DictIndexOf(&HeapDict, oldPtr, HeapDictFunctions);
     ThrowIf(oldIndex == -1, EINVAL); // This should never happen, but it's best not to fail silently if it does.
 
@@ -84,14 +94,23 @@ static void GCWatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t siz
     data.Size = size;
     DictRemove(&HeapDict, oldIndex, HeapDictFunctions);
     DictAdd(&HeapDict, ptr, data, HeapDictFunctions);
+
+    ExitBegin();
+        pthread_mutex_unlock(&HeapDictMutex);
+    ExitEnd();
 }
 
 static void GCWatchHeapFreeCallback(void *ptr)
 {
+    pthread_mutex_lock(&HeapDictMutex);
     ssize_t index = DictIndexOf(&HeapDict, ptr, HeapDictFunctions);
     if(index == -1)
+    {
+        pthread_mutex_unlock(&HeapDictMutex);
         return;
+    }
     DictRemove(&HeapDict, index, HeapDictFunctions);
+    pthread_mutex_unlock(&HeapDictMutex);
 }
 
 void GCWatchHeap()
@@ -108,18 +127,27 @@ void GCStopWatchingHeap()
 {
     GCSetMallocCallback(NULL);
     GCSetFreeCallback(NULL);
+
+    // Not locking the dictionary here because there really should not be stuff going on
+    // in other threads when this function is called anyways.
     DictFree(&HeapDict); 
+    pthread_mutex_destroy(&HeapDictMutex);
     HeapDict = (DictFunctionAllocationData)DictDefault;
+    HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
 }
 
 void *GCIterateHeap(size_t *index, GCAllocationData *data)
 {
+    pthread_mutex_lock(&HeapDictMutex);
     while(DictIterate(&HeapDict, index))
     {
         if(data != NULL)
             *data = *DictGetValue(&HeapDict, *index);
+
+        pthread_mutex_unlock(&HeapDictMutex);
         return *DictGetKey(&HeapDict, *index);
     }
+    pthread_mutex_unlock(&HeapDictMutex);
 
     return NULL;
 }
