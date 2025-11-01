@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+typedef struct GCAllocationData
+{
+    size_t Size;
+    uintptr_t PC;
+} GCAllocationData;
+
 // Allows overriding the default GCMalloc allocator. Set to NULL to restore default.
 void GCSetCustomAllocator(void *(* allocator)(const size_t size));
 
@@ -36,7 +42,7 @@ void GCStopWatchingHeap();
 
 
 // Iterates through the heap one pointer at a time. The passed index must be incremented by one after each call.
-void *GCIterateHeap(size_t *index);
+void *GCIterateHeap(size_t *index, GCAllocationData *data);
 
 // Prints the current status of the heap for debugging.
 void GCPrintHeap();

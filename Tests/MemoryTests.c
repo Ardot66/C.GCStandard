@@ -22,7 +22,7 @@ void TestMemory()
         }
 
         void *iterPtr;
-        for(size_t x = 0; (iterPtr = GCIterateHeap(&x)) != NULL; x++)
+        for(size_t x = 0; (iterPtr = GCIterateHeap(&x, NULL)) != NULL; x++)
         {
             bool found = false;
             for(size_t y = 0; y < allocateCount; y++)    
@@ -42,7 +42,7 @@ void TestMemory()
             GCFree(allocatedPtrs[x]);
 
         size_t index = 0;
-        TEST(GCIterateHeap(&index), ==, NULL);
+        TEST(GCIterateHeap(&index, NULL), ==, NULL);
 
         GCStopWatchingHeap();
     TryEnd;

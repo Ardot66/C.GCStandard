@@ -19,4 +19,7 @@ struct GCInternalThreadData
 
 extern thread_local struct GCInternalThreadData GCInternalThreadData;
 
+struct backtrace_state;
+struct backtrace_state *GCInternalGetBacktraceState();
+
 #endif

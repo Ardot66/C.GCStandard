@@ -1,7 +1,7 @@
 #ifndef __GC_EXCEPTION__
 #define __GC_EXCEPTION__
 
-#include "GCInternalThreadLocalGlobals.h"
+#include "GCInternalGlobals.h"
 
 enum GCInternalExceptionConstants
 {

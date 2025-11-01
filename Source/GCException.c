@@ -7,16 +7,6 @@
 
 static Exception FallbackException = {.IsFallbackException = 1};
 static int FallbackExceptionInUse = 0;
-static struct backtrace_state *BacktraceState = NULL;
-    
-static struct backtrace_state *GetBacktraceState()
-{
-    // TODO: set up error callbacks.
-    if(BacktraceState == NULL)
-        BacktraceState = backtrace_create_state(NULL, 1, NULL, NULL);
-
-    return BacktraceState;
-}
 
 void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception)
 {
@@ -65,7 +55,7 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
             .BacktraceFrames = 0
         };
 
-        backtrace_full(GetBacktraceState(), 1, BacktraceCallback, NULL, &tempException);
+        backtrace_full(GCInternalGetBacktraceState(), 1, BacktraceCallback, NULL, &tempException);
         fprintf(
             stderr,
             "Warning: The following exception was thrown within an exit block while another exception was unwinding the stack, and as such the block terminated early, "
@@ -105,7 +95,7 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
     exception->Function = function;
     exception->BacktraceFrames = 0;
 
-    backtrace_full(GetBacktraceState(), 1, BacktraceCallback, NULL, exception);
+    backtrace_full(GCInternalGetBacktraceState(), 1, BacktraceCallback, NULL, exception);
 
     GCInternalThreadData.Exception = exception;
     return exception;
@@ -126,7 +116,7 @@ void ExceptionPrint(Exception *exception)
     for(int x = 0; x < exception->BacktraceFrames; x++)
     {
         int depth = exception->BacktraceFrames - x - 1;
-        backtrace_pcinfo(GetBacktraceState(), exception->Backtrace[x], BacktracePrintCallback, NULL, &depth);
+        backtrace_pcinfo(GCInternalGetBacktraceState(), exception->Backtrace[x], BacktracePrintCallback, NULL, &depth);
     }
 }
 
