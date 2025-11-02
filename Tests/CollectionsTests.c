@@ -84,6 +84,13 @@ void TestCList()
         TEST(list.Count, ==, countof(insertRangeResult));
         for(size_t x = 0; x < countof(insertRangeResult); x++)
             TEST(CListGet(&list, x), ==, insertRangeResult[x]);
+
+        const size_t stressTest = 1000;
+        CListClear(&list);
+        for(size_t x = 0; x < stressTest; x++)
+            CListAdd(&list, ((x * 50 + 23) << 2) * 43);
+        for(size_t x = 0; x < stressTest; x++)
+            TEST(CListGet(&list, x), ==, ((x * 50 + 23) << 2) * 43);
     TryEnd;
 
     TEST(exception, ==, NULL, ExceptionPrint(exception););

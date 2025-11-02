@@ -86,7 +86,7 @@ static void GCWatchHeapMallocCallback(void *ptr, const size_t size)
     {
         .Size = size, 
         .PC = (uintptr_t)NULL, 
-        .ExtraPCs = BacktraceCount == 0 ? NULL : GCMalloc(sizeof(GCAllocationExtraPCData) + sizeof(uintptr_t) * BacktraceCount)
+        .ExtraPCs = BacktraceCount == 0 ? NULL : GCCalloc(sizeof(GCAllocationExtraPCData) + sizeof(uintptr_t) * BacktraceCount)
     };
     backtrace_full(GCInternalGetBacktraceState(), 2, GCWatchHeapBacktraceCallback, NULL, &data);
 
@@ -124,6 +124,7 @@ static void GCWatchHeapFreeCallback(void *ptr)
     if(index == -1)
     {
         pthread_mutex_unlock(&HeapDictMutex);
+        printf("Warning: index == -1 in GCWatchHeapFreeCallback\n");
         return;
     }
     GCFree((DictGetValue(&HeapDict, index))->ExtraPCs);
