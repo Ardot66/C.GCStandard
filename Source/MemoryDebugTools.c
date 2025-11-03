@@ -17,7 +17,6 @@ DictDefine(Func, GCAllocationData, DictFunctionAllocationData);
 
 static DictFunctionAllocationData HeapDict = DictDefault;
 static size_t BacktraceCount = 0, AllocationPadding = 0;
-static const DictFunctions HeapDictFunctions = DictDefaultFunctions;
 static pthread_mutex_t HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline char PaddingHash(const void *ptr, const size_t index) 
@@ -66,7 +65,7 @@ static inline void CheckPaddingContaminatedPrintBlockInfo(size_t size)
 
 static inline void CheckPaddingContaminated(const void *ptr)
 {
-    ssize_t index = DictIndexOf(&HeapDict, ptr, HeapDictFunctions);
+    ssize_t index = DictIndexOf(&HeapDict, ptr, DictDefaultFunctions);
     Assert(index != -1);
     size_t size = DictGetValue(&HeapDict, index).Size;
     void *unpaddedPtr = (char *)ptr - AllocationPadding;
@@ -137,7 +136,7 @@ static void WatchHeapMallocCallback(void *ptr, const size_t size)
 
     pthread_mutex_lock(&HeapDictMutex);
     ExitInit();
-    DictAdd(&HeapDict, ptr, data, HeapDictFunctions);
+    DictAdd(&HeapDict, ptr, data, DictDefaultFunctions);
     ExitBegin();
         IfExitException
             GCFree(data.ExtraPCs);
@@ -149,13 +148,13 @@ static void WatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t size)
 {
     pthread_mutex_lock(&HeapDictMutex);
     ExitInit();
-    ssize_t oldIndex = DictIndexOf(&HeapDict, oldPtr, HeapDictFunctions);
+    ssize_t oldIndex = DictIndexOf(&HeapDict, oldPtr, DictDefaultFunctions);
     Assert(oldIndex != -1);
 
     GCAllocationData data = DictGetValue(&HeapDict, oldIndex);
     data.Size = size;
-    DictRemove(&HeapDict, oldIndex, HeapDictFunctions);
-    DictAdd(&HeapDict, ptr, data, HeapDictFunctions);
+    DictRemove(&HeapDict, oldIndex, DictDefaultFunctions);
+    DictAdd(&HeapDict, ptr, data, DictDefaultFunctions);
 
     ExitBegin();
         pthread_mutex_unlock(&HeapDictMutex);
@@ -165,10 +164,10 @@ static void WatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t size)
 static void WatchHeapFreeCallback(void *ptr)
 {
     pthread_mutex_lock(&HeapDictMutex);
-    ssize_t index = DictIndexOf(&HeapDict, ptr, HeapDictFunctions);
+    ssize_t index = DictIndexOf(&HeapDict, ptr, DictDefaultFunctions);
     Assert(index != -1);
     GCFree((DictGetValue(&HeapDict, index)).ExtraPCs);
-    DictRemove(&HeapDict, index, HeapDictFunctions);
+    DictRemove(&HeapDict, index, DictDefaultFunctions);
     pthread_mutex_unlock(&HeapDictMutex);
 }
 
