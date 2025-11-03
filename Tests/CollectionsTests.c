@@ -2,7 +2,9 @@
 
 #include <error.h>
 #include "GCTestingUtilities.h" 
-#include "GCCollections.h"
+#include "GCList.h"
+#include "GCDictionary.h"
+#include "GCCList.h"
 #include "GCException.h"
 
 #define countof(list) (sizeof(list) / sizeof(*list))

@@ -3,7 +3,7 @@
 #include "GCMemoryDebugTools.h"
 #include "GCMemory.h"
 #include "GCException.h"
-#include "GCCollections.h"
+#include "GCDictionary.h"
 #include "GCAssert.h"
 
 #include <stdlib.h>

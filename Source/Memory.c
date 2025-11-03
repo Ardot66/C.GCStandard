@@ -1,12 +1,9 @@
 #include "GCInternalGlobals.h"
 #include "GCMemory.h"
 #include "GCException.h"
-#include "GCCollections.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <backtrace.h>
-#include <pthread.h>
 
 // Custom functions for overriding the default malloc and free functions.
 static void *(*CustomAllocator)(const size_t size) = NULL;

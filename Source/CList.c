@@ -2,7 +2,7 @@
 #include <sys/types.h>
 #include <string.h>
 
-#include "GCCollections.h"
+#include "GCCList.h"
 #include "GCException.h"
 #include "GCMemory.h"
 

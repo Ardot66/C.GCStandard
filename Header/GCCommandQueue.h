@@ -1,7 +1,7 @@
 #ifndef __GC_COMMAND_QUEUE__
 #define __GC_COMMAND_QUEUE__
 
-#include "GCCollections.h"
+#include "GCCList.h"
 #include <pthread.h>
 
 CListDefine(char, GCInternalCommandQueueCListChar);
@@ -13,7 +13,7 @@ typedef struct CommandQueue
     pthread_mutex_t Mutex;
 } CommandQueue;
 
-static const CommandQueue CommandQueueDefault = {.List = ListDefault, .Mutex = PTHREAD_MUTEX_INITIALIZER};
+static const CommandQueue CommandQueueDefault = {.List = CListDefault, .Mutex = PTHREAD_MUTEX_INITIALIZER};
 
 // Pushes a new command to the end of the queue. Passed params will be copied into the queue in the process.
 // Automatically locks and unlocks the command queue.

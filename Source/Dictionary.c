@@ -1,4 +1,4 @@
-#include "GCCollections.h"
+#include "GCDictionary.h"
 #include "GCException.h"
 #include "GCMemory.h"
 #include <stdlib.h>

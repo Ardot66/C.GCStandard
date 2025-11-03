@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include "GCCollections.h"
+#include "GCList.h"
 #include "GCException.h"
 #include "GCMemory.h"
 
