@@ -68,7 +68,7 @@ static inline void CheckPaddingContaminated(const void *ptr)
 {
     ssize_t index = DictIndexOf(&HeapDict, ptr, HeapDictFunctions);
     Assert(index != -1);
-    size_t size = DictGetValue(&HeapDict, index)->Size;
+    size_t size = DictGetValue(&HeapDict, index).Size;
     void *unpaddedPtr = (char *)ptr - AllocationPadding;
     bool contaminated = 0;
     for(size_t x = 0; x < AllocationPadding * 2 + size; x++)
@@ -99,7 +99,7 @@ static inline void CheckPaddingContaminated(const void *ptr)
     }
 
     if(contaminated)
-        PrintAllocation(ptr, *DictGetValue(&HeapDict, index));
+        PrintAllocation(ptr, DictGetValue(&HeapDict, index));
 }
 
 static int WatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
@@ -152,7 +152,7 @@ static void WatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t size)
     ssize_t oldIndex = DictIndexOf(&HeapDict, oldPtr, HeapDictFunctions);
     Assert(oldIndex != -1);
 
-    GCAllocationData data = *DictGetValue(&HeapDict, oldIndex);
+    GCAllocationData data = DictGetValue(&HeapDict, oldIndex);
     data.Size = size;
     DictRemove(&HeapDict, oldIndex, HeapDictFunctions);
     DictAdd(&HeapDict, ptr, data, HeapDictFunctions);
@@ -167,7 +167,7 @@ static void WatchHeapFreeCallback(void *ptr)
     pthread_mutex_lock(&HeapDictMutex);
     ssize_t index = DictIndexOf(&HeapDict, ptr, HeapDictFunctions);
     Assert(index != -1);
-    GCFree((DictGetValue(&HeapDict, index))->ExtraPCs);
+    GCFree((DictGetValue(&HeapDict, index)).ExtraPCs);
     DictRemove(&HeapDict, index, HeapDictFunctions);
     pthread_mutex_unlock(&HeapDictMutex);
 }
@@ -266,7 +266,7 @@ void *GCIterateHeap(size_t *index, GCAllocationData *data)
     while(DictIterate(&HeapDict, index))
     {
         if(data != NULL)
-            *data = *DictGetValue(&HeapDict, *index);
+            *data = DictGetValue(&HeapDict, *index);
 
         pthread_mutex_unlock(&HeapDictMutex);
         return *DictGetKey(&HeapDict, *index);

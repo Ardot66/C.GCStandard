@@ -101,8 +101,8 @@ int DictDefaultStringEquate(const size_t keySize, const void *keyA, const void *
 #define DictDefaultStringFunctions {.Hash = DictDefaultStringHash, .Equate = DictDefaultStringEquate}
 
 #define M_DictGenericParams(dict, ...) (DictGeneric *)dict, ## __VA_ARGS__, sizeof(*(dict)->_Key), sizeof(*(dict)->_Value)
-#define DictGetKey(dict, index) ((typeof((dict)->_Key))DictGetKeyGeneric(M_DictGenericParams(dict, index)))
-#define DictGetValue(dict, index) ((typeof((dict)->_Value))DictGetValueGeneric(M_DictGenericParams(dict, index)))
+#define DictGetKey(dict, index) (*(typeof((dict)->_Key))DictGetKeyGeneric(M_DictGenericParams(dict, index)))
+#define DictGetValue(dict, index) (*(typeof((dict)->_Value))DictGetValueGeneric(M_DictGenericParams(dict, index)))
 #define DictIndexOf(dict, key, functions) DictIndexOfGeneric(M_DictGenericParams(dict, &(key), functions))
 #define DictFree(dict) DictFreeGeneric((DictGeneric *)dict)
 #define DictResize(dict, newLength, functions) DictResizeGeneric(M_DictGenericParams(dict, newLength, functions))
