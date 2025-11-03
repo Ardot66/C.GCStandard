@@ -3,19 +3,6 @@
 
 #include <stdint.h>
 
-typedef struct GCAllocationExtraPCData
-{
-    size_t Count;
-    uintptr_t PCs[];
-} GCAllocationExtraPCData;
-
-typedef struct GCAllocationData
-{
-    size_t Size;
-    uintptr_t PC;
-    GCAllocationExtraPCData *ExtraPCs;
-} GCAllocationData;
-
 // Allows overriding the default GCMalloc allocator. Set to NULL to restore default.
 void GCSetCustomAllocator(void *(* allocator)(const size_t size));
 
@@ -37,22 +24,6 @@ void GCSetReallocCallback(void (*reallocCallback)(void *oldPtr, void *ptr, const
 // Allows specifying a callback that runs every time GCFree is called. Such callbacks are relatively
 // slow and should only really be used for debugging. Set to NULL to restore to default.
 void GCSetFreeCallback(void (*callback)(void *ptr));
-
-
-// Adds allocation callbacks that track any subsequent allocations, allowing for the heap to be examined
-// for memory leaks and other debugging purposes. To stop watching the heap, call GCStopWatchingHeap.
-// NOTE: only tracks allocations made with GC functions, not the standard malloc, calloc, and realloc.
-void GCWatchHeap(size_t backtraceCount);
-
-// Stops watching the heap.
-void GCStopWatchingHeap();
-
-
-// Iterates through the heap one pointer at a time. The passed index must be incremented by one after each call.
-void *GCIterateHeap(size_t *index, GCAllocationData *data);
-
-// Prints the current status of the heap for debugging.
-void GCPrintHeap();
 
 
 // Works the same as malloc, but allows for custom allocators and callbacks to be set.
