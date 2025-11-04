@@ -2,6 +2,7 @@
 #include "GCTime.h"
 #include "GCException.h"
 #include "GCTestingUtilities.h"
+#include <stdlib.h>
 
 enum CommandType
 {
@@ -29,7 +30,7 @@ void *CommandQueueThread(void *params)
     CommandQueuePush(&threadInfo->Queue, COMMAND_TYPE_SUCCESS, sizeof(CommandParams), CommandParams);
     TryEnd;
 
-    TEST(exception, ==, NULL, ExceptionPrint(exception); exit(exception->Type););
+    TEST(exception, ==, NULL, ExceptionPrint(exception); exit(EXIT_FAILURE););
     ExceptionFree(exception);
 
     pthread_exit(NULL);
