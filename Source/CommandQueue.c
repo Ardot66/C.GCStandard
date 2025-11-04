@@ -2,10 +2,20 @@
 #include "GCException.h"
 #include <errno.h>
 
+#include "GCAssert.h"
+#include <stdio.h>
+
 typedef struct CommandHeader
 {
     uint32_t Type;
 } CommandHeader;
+
+void PrintCommandQueue(CommandQueue *queue)
+{
+    for(size_t x = 0; x < queue->List.Count; x++)
+        printf("%02X ", (unsigned char)CListGet(&queue->List, x));
+    printf("\n");
+}
 
 void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const size_t paramCount, const size_t *paramSizes, const void **params)
 {
@@ -21,6 +31,7 @@ void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const s
     CListAddRange(&queue->List, &header, sizeof(header));
     for(size_t x = 0; x < paramCount; x++)
         CListAddRange(&queue->List, params[x], paramSizes[x]);
+    // printf("Pushed: "); PrintCommandQueue(queue);
 
     ExitBegin();
         // This handles the possibility that the command queue is corrupted if any of the CListAdd calls fail.
@@ -52,7 +63,9 @@ int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
         return -1;
     ThrowIf(queue->List.Count < sizeof *commandDest, EINVAL);
 
-    *commandDest = *(uint32_t *)&CListGet(&queue->List, 0);
+    for(size_t x = 0; x < sizeof(uint32_t); x++)
+        ((char *)commandDest)[x] = CListGet(&queue->List, x);
+    // printf("Popped: (%u)", *commandDest); PrintCommandQueue(queue);
     CListRemoveRange(&queue->List, 0, sizeof(*commandDest));
 
     return 0;

@@ -17,7 +17,7 @@ DictDefine(Func, GCAllocationData, DictFunctionAllocationData);
 
 static DictFunctionAllocationData HeapDict = DictDefault;
 static size_t BacktraceCount = 0, AllocationPadding = 0;
-static pthread_mutex_t HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t HeapDictMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
 
 static inline char PaddingHash(const void *ptr, const size_t index) 
 {
@@ -65,6 +65,7 @@ static inline void CheckPaddingContaminatedPrintBlockInfo(size_t size)
 
 static inline void CheckPaddingContaminated(const void *ptr)
 {
+    pthread_mutex_lock(&HeapDictMutex);
     ssize_t index = DictIndexOf(&HeapDict, ptr, DictDefaultFunctions);
     Assert(index != -1);
     size_t size = DictGetValue(&HeapDict, index).Size;
@@ -99,6 +100,7 @@ static inline void CheckPaddingContaminated(const void *ptr)
 
     if(contaminated)
         PrintAllocation(ptr, DictGetValue(&HeapDict, index));
+    pthread_mutex_unlock(&HeapDictMutex);
 }
 
 static int WatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
@@ -165,6 +167,10 @@ static void WatchHeapFreeCallback(void *ptr)
 {
     pthread_mutex_lock(&HeapDictMutex);
     ssize_t index = DictIndexOf(&HeapDict, ptr, DictDefaultFunctions);
+    if(index == -1)
+    {
+        GCPrintHeap();
+    }
     Assert(index != -1);
     GCFree((DictGetValue(&HeapDict, index)).ExtraPCs);
     DictRemove(&HeapDict, index, DictDefaultFunctions);
@@ -209,7 +215,12 @@ static void WatchHeapCustomDeallocator(void *ptr)
     free((char *)ptr - AllocationPadding);
 
     // Calling this here because otherwise the dictionary entry is removed too early.
-    WatchHeapFreeCallback(ptr);
+    if(!GCInternalThreadData.HeapCallbackActive)
+    {
+        GCInternalThreadData.HeapCallbackActive = true;
+        WatchHeapFreeCallback(ptr);
+        GCInternalThreadData.HeapCallbackActive = false;
+    }
 }
 
 void GCWatchHeap(size_t backtraceCount, size_t allocationPadding)
