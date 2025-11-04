@@ -17,7 +17,7 @@ void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception)
     {
         ExceptionPrint(GCInternalThreadData.Exception);
         fprintf(stderr, "Fatal error: no try statement found to catch current exception, aborting\n");
-        exit(GCInternalThreadData.Exception->Type);
+        exit(EXIT_FAILURE);
     }
     
     longjmp(*GCInternalThreadData.NextBufRef, -1);
@@ -38,7 +38,7 @@ static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int
     return strcmp(function, "main") == 0;
 }
 
-Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function)
+Exception *GCInternalExceptionCreate(uint64_t line, const char *file, const char *function, const size_t messageCount, const char **messages)
 {
     // If an exception already exists, then this exception must be occurring within an exit block, and thus must be handled
     // as a special case. Because only one exception can be handled at once, the exception that would typically be created
@@ -47,14 +47,14 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
     {
         Exception tempException = 
         {
-            .Type = type,
-            .Message = message,
             .Line = line,
             .File = file,
+            .MessageCount = messageCount,
             .Function = function,
             .BacktraceFrames = 0
         };
 
+        memcpy(tempException.Messages, messages, messageCount * sizeof(*messages));
         backtrace_full(GCInternalGetBacktraceState(), 1, BacktraceCallback, NULL, &tempException);
         fprintf(
             stderr,
@@ -88,13 +88,13 @@ Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t lin
     else
         exception->IsFallbackException = 0;
 
-    exception->Type = type;
-    exception->Message = message;
+    exception->MessageCount = messageCount;
     exception->Line = line;
     exception->File = file;
     exception->Function = function;
     exception->BacktraceFrames = 0;
 
+    memcpy(exception->Messages, messages, messageCount * sizeof(*messages));
     backtrace_full(GCInternalGetBacktraceState(), 1, BacktraceCallback, NULL, exception);
 
     GCInternalThreadData.Exception = exception;
@@ -111,7 +111,9 @@ static int BacktracePrintCallback(void *data, uintptr_t pc, const char *filename
 
 void ExceptionPrint(Exception *exception)
 {
-    fprintf(stderr, "%s: %s at %s - %s() - Line %zu\n", strerror(exception->Type), exception->Message, exception->File, exception->Function, exception->Line);
+    for(size_t x = 0; x < exception->MessageCount; x++)
+        fprintf(stderr, "%s, ", exception->Messages[x]);
+    fprintf(stderr, "at %s() in %s line %zu\n", exception->Function, exception->File, exception->Line);
 
     for(int x = 0; x < exception->BacktraceFrames; x++)
     {

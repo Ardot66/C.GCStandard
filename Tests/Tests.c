@@ -8,7 +8,6 @@ void TestMemory();
 
 int main()
 {
-
     printf("\nTesting exception\n---\n");
     TestException();
 

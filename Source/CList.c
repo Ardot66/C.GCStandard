@@ -34,7 +34,7 @@ static inline void CListMoveGeneric(CListGeneric *list, const size_t startIndex,
 
 void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize)
 {
-    ThrowIf(newLength < list->Count, EINVAL);
+    ThrowIf(newLength < list->Count);
 
     CListGeneric *temp = GCRealloc(list->V, newLength * elemSize);
 
@@ -52,7 +52,7 @@ void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t
 
 void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
 {
-    ThrowIf(index > list->Count, EINVAL);
+    ThrowIf(index > list->Count);
 
     if(list->Count + rangeCount > list->Length)
         CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2 + 1, elemSize);
@@ -89,7 +89,7 @@ void CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSiz
 
 void CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_t rangeCount, const size_t elemSize)
 {
-    ThrowIf(index + rangeCount > list->Count, EINVAL);
+    ThrowIf(index + rangeCount > list->Count);
 
     // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
     if(index < list->Count >> 1)

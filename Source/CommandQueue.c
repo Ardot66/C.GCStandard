@@ -50,7 +50,7 @@ int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
 {
     if(queue->List.Count == 0)
         return -1;
-    ThrowIf(queue->List.Count < sizeof *commandDest, EINVAL);
+    ThrowIf(queue->List.Count < sizeof *commandDest);
 
     *commandDest = *(uint32_t *)&CListGet(&queue->List, 0);
     CListRemoveRange(&queue->List, 0, sizeof(*commandDest));
@@ -60,7 +60,7 @@ int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
 
 void CommandQueuePopParam(CommandQueue *queue, const size_t paramSize, void *paramDest)
 {
-    ThrowIf(queue->List.Count < paramSize, EINVAL);
+    ThrowIf(queue->List.Count < paramSize);
 
     for(size_t x = 0; x < paramSize; x++)
         ((char *)paramDest)[x] = CListGet(&queue->List, x);

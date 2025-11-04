@@ -105,7 +105,7 @@ static void GCWatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t siz
     pthread_mutex_lock(&HeapDictMutex);
     ExitInit();
     ssize_t oldIndex = DictIndexOf(&HeapDict, oldPtr, HeapDictFunctions);
-    ThrowIf(oldIndex == -1, EINVAL); // This should never happen, but it's best not to fail silently if it does.
+    ThrowIf(oldIndex == -1); // This should never happen, but it's best not to fail silently if it does.
 
     GCAllocationData data = *DictGetValue(&HeapDict, oldIndex);
     data.Size = size;
@@ -249,7 +249,7 @@ static inline void *GCMallocInternal(const size_t size)
 void *GCMalloc(const size_t size)
 {
     void *ptr = GCMallocInternal(size);
-    ThrowIf(ptr == NULL, errno);
+    ThrowIf(ptr == NULL, strerror(errno));
     return ptr;
 }
 
@@ -261,7 +261,7 @@ void *GCMallocNoExcept(const size_t size)
 void *GCCalloc(const size_t size)
 {
     void *ptr = GCMallocInternal(size);
-    ThrowIf(ptr == NULL, errno);
+    ThrowIf(ptr == NULL, strerror(errno));
     memset(ptr, 0, size);
     return ptr;
 }
@@ -300,7 +300,7 @@ static inline void *GCReallocInternal(void *oldPtr, const size_t size)
 void *GCRealloc(void *oldPtr, const size_t size)
 {
     void *ptr = GCReallocInternal(oldPtr, size);
-    ThrowIf(ptr == NULL, errno);
+    ThrowIf(ptr == NULL, strerror(errno));
     return ptr;
 }
 

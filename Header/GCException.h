@@ -5,16 +5,17 @@
 
 enum GCInternalExceptionConstants
 {
-    GC_INTERNAL_BACKTRACE_FRAMES = 64
+    GC_INTERNAL_BACKTRACE_FRAMES = 64,
+    GC_INTERNAL_MESSAGE_COUNT = 4
 };
 
 typedef struct Exception
 {
-    int Type;
     int BacktraceFrames;
     int IsFallbackException;
     uintptr_t Backtrace[GC_INTERNAL_BACKTRACE_FRAMES];
-    const char *Message;
+    size_t MessageCount;
+    const char *Messages[GC_INTERNAL_MESSAGE_COUNT];
 
     // Line information is still kept as backtraces may fail.
     const char *File;
@@ -24,7 +25,7 @@ typedef struct Exception
 
 [[__noreturn__]]
 void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception);
-Exception *GCInternalExceptionCreate(int type, const char *message, uint64_t line, const char *file, const char *function);
+Exception *GCInternalExceptionCreate(uint64_t line, const char *file, const char *function, const size_t messageCount, const char **messages);
 
 // Initializes the exit block, must be placed at the beginning of a scope, before any potential exceptions occur.
 // If multiple exit blocks (and thus ExitInits) are placed within the same scope and intersect in any way,
@@ -63,9 +64,10 @@ do {} while (0)
 
 // Throws an exception, automatically exiting the current scope and jumping to the most recent exit block for cleanup or
 // try block for handling.
-#define Throw(error, message)\
+#define Throw(message, ...)\
 do { \
-    GCInternalExceptionJump(GCInternalThreadData.NextExitFunc, GCInternalExceptionCreate(error, message, __LINE__, __FILE__, __func__));\
+    const char *messages[] = {message, ## __VA_ARGS__};\
+    GCInternalExceptionJump(GCInternalThreadData.NextExitFunc, GCInternalExceptionCreate(__LINE__, __FILE__, __func__, sizeof(messages) / sizeof(*messages), messages));\
 } while (0)
 
 // Throws an existing exception.
@@ -75,14 +77,15 @@ do {\
     GCInternalExceptionJump(GCInternalThreadData.NextExitFunc, GCInternalThreadData.Exception);\
 }while (0)
 
-// Confirms that a statement is true, throwing an exception otherwise.
-#define ThrowMsgIf(statement, error, message)\
+#define ThrowMsgIf(statement, message)\
 if(statement)\
     Throw(error, message)
 
 // Confirms that a statement is true, throwing an exception otherwise.
 // Always contains the error message "Assertion failed".
-#define ThrowIf(statement, error) ThrowMsgIf(statement, error, "Error detected: (" #statement ")")
+#define ThrowIf(statement, ...)\
+if(statement)\
+    Throw("Error detected: (" #statement ")", ## __VA_ARGS__)
 
 // Marks the beginning of a try block, in which any exceptions will be caught and placed in the passed exception variable
 // for handling after the try block ends. Any non-null exception needs to be freed using ExceptionFree.

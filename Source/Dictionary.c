@@ -126,7 +126,7 @@ size_t DictAddGeneric(DictGeneric *dictionary, const void *key, const void *valu
         return checkIndex;
     }
 
-    Throw(EINVAL, "Failed to add value to dictionary (this shouldn't happen)");
+    Throw("Failed to add value to dictionary (this shouldn't happen)");
     return 0;
 }
 

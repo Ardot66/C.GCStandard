@@ -15,7 +15,7 @@ void ExceptionRecursionTest(size_t recursion)
         ExceptionRecursionTest(recursion + 1);
 
     if(throw)
-        Throw(EINVAL, ErrorMessage);
+        Throw(ErrorMessage, "more erroring");
 
     ExitBegin();
         int detected = 0;
@@ -42,10 +42,10 @@ void TestException()
     TryEnd;
 
     TEST(ExceptionExitsCounted, ==, ExceptionRecursions);
-    TEST(exception->Type, ==, EINVAL);
-    TEST(exception->Message, ==, ErrorMessage);
+    TEST(exception->MessageCount, ==, 2);
+    TEST(exception->Messages[0], ==, ErrorMessage);
 
-    printf("Testing exception printing, should say: 'Invalid argument: This is an error at Tests/Test.c - ExceptionRecursionTest() - Line 12', followed by a backtrace\n");
+    printf("Testing exception printing, should say: 'This is an error, more erroring, at ExceptionRecursionTest() in Tests/Test.c line [x]', followed by a backtrace\n");
     ExceptionPrint(exception);
 
     Exception *exception2;
@@ -57,10 +57,9 @@ void TestException()
     ExceptionFree(exception);
 
     TryBegin(exception);
-        ThrowIf(1 == 1, ENOMEM);
+        ThrowIf(1 == 1);
     TryEnd;
 
-    TEST(exception->Type, ==, ENOMEM)
     ExceptionFree(exception);
 
     ExitBegin();

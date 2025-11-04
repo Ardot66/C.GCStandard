@@ -36,7 +36,7 @@ void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const si
 
 void ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
 {
-    ThrowIf(index > list->Count, EINVAL);
+    ThrowIf(index > list->Count);
     ListAutoResize(list, rangeCount, elemSize);
 
     if(index < list->Count)
