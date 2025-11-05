@@ -2,6 +2,7 @@
 #include "GCMemoryDebugTools.h"
 #include "GCException.h"
 #include "GCTestingUtilities.h"
+#include "Tests.h"
 #include <stdio.h>
 
 void TestMemory()
@@ -24,6 +25,8 @@ void TestMemory()
 
         ((char **)allocatedPtrs)[1][11] = 10;
         ((char **)allocatedPtrs)[1][-2] = 10;
+
+        memset(allocatedPtrs[2], 0, 64 * 2);
 
         void *iterPtr;
         for(size_t x = 0; (iterPtr = GCIterateHeap(&x, NULL)) != NULL; x++)
@@ -56,4 +59,5 @@ void TestMemory()
     ExceptionFree(exception);
 
     PrintTestStatus(NULL);
+    MetaTest(TestsPassed, TestsRun);
 }

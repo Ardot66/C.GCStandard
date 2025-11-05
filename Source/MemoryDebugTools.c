@@ -74,7 +74,11 @@ static inline void CheckPaddingContaminated(const void *ptr)
     for(size_t x = 0; x < AllocationPadding * 2 + size; x++)
     {
         if(x == AllocationPadding)
+        {
             x += size;
+            if(contaminated)
+                CheckPaddingContaminatedPrintBlockInfo(size);
+        }
 
         char hash = PaddingHash(unpaddedPtr, x);
         char padding = ((char *)unpaddedPtr)[x];
@@ -93,9 +97,6 @@ static inline void CheckPaddingContaminated(const void *ptr)
             printf("%zd: %02X - %02X\n", (ssize_t)x - AllocationPadding, (unsigned char)hash, (unsigned char)padding);
             contaminated = true;
         }
-
-        if(contaminated && x == AllocationPadding + size)
-            CheckPaddingContaminatedPrintBlockInfo(size);
     }
 
     if(contaminated)
@@ -106,10 +107,10 @@ static inline void CheckPaddingContaminated(const void *ptr)
 static int WatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
 {
     (void)lineno;
-    if(filename == NULL && function == NULL && lineno == 0)
+    if(pc == UINTPTR_MAX)
         return 1;
 
-    if(strcmp("Memory.c", filename) == 0)
+    if(filename != NULL && strcmp("Memory.c", filename) == 0)
         return 0;
 
     GCAllocationData *allocData = data;
@@ -167,10 +168,6 @@ static void WatchHeapFreeCallback(void *ptr)
 {
     pthread_mutex_lock(&HeapDictMutex);
     ssize_t index = DictIndexOf(&HeapDict, ptr, DictDefaultFunctions);
-    if(index == -1)
-    {
-        GCPrintHeap();
-    }
     Assert(index != -1);
     GCFree((DictGetValue(&HeapDict, index)).ExtraPCs);
     DictRemove(&HeapDict, index, DictDefaultFunctions);
@@ -296,3 +293,13 @@ void GCPrintHeap()
         PrintAllocation(ptr, data);
 }
 
+void GCPrintMemory(const void *ptr, const size_t size)
+{
+    for(size_t x = 0; x < size; x++)
+    {
+        if(x % 8 == 0)
+            printf("\n%04zu: ", x);
+        printf("%02X ", (unsigned char)((char *)ptr)[x]);
+    }
+    printf("\n");
+}

@@ -143,7 +143,7 @@ void DictRemoveGeneric(DictGeneric *dictionary, const size_t index, const DictFu
         if(!DictGetElementExists(dictionary, nextIndex % dictionary->Length, keySize, valueSize))
             break;
 
-        if(nextHash <= curIndex)
+        if(nextHash <= curIndex && (nextHash > nextIndex % dictionary->Length || nextIndex < dictionary->Length))
         {
             memcpy(curKey, DictGetKeyGeneric(dictionary, nextIndex % dictionary->Length, keySize, valueSize), keySize + valueSize);
 

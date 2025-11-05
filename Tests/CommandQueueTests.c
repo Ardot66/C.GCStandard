@@ -2,6 +2,7 @@
 #include "GCTime.h"
 #include "GCException.h"
 #include "GCTestingUtilities.h"
+#include "Tests.h"
 #include <stdlib.h>
 
 enum CommandType
@@ -89,4 +90,5 @@ void TestCommandQueue()
     ExceptionFree(exception);
 
     PrintTestStatus(NULL);
+    MetaTest(TestsPassed, TestsRun);
 }

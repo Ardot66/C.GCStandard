@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include "GCTestingUtilities.h"
+#include "Tests.h"
 
 const char *ErrorMessage = "This is an error";
 size_t ExceptionRecursions = 5, ExceptionExitsCounted = 0;
@@ -66,4 +67,5 @@ void TestException()
     ExitEnd();
 
     PrintTestStatus(NULL);
+    MetaTest(TestsPassed, TestsRun);
 }

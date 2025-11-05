@@ -6,6 +6,7 @@
 #include "GCDictionary.h"
 #include "GCCList.h"
 #include "GCException.h"
+#include "Tests.h"
 
 #define countof(list) (sizeof(list) / sizeof(*list))
 
@@ -116,7 +117,7 @@ void TestDictionary()
 
     Exception *exception;
     TryBegin(exception);
-        const size_t elements = 20, removeElements = 10;
+        const size_t elements = 100, removeElements = 50;
         for(size_t x = 0; x < elements; x++)
         {
             size_t key = DictKey(x);
@@ -139,19 +140,15 @@ void TestDictionary()
             DictRemove(&dict, index, functions);
         }
         
-        for(size_t x = 0; x < elements; x++)
+        for(size_t x = removeElements; x < elements; x++)
         {
             size_t key = DictKey(x);
             ssize_t index = DictIndexOf(&dict, key, functions);
 
-            if(x < removeElements && index == -1)
-                continue;
-
             TEST(index, !=, -1);
             TEST(DictGetValue(&dict, index), ==, x);
         }
-
-    TryEnd;
+   TryEnd;
 
     TEST(exception, ==, NULL, ExceptionPrint(exception););
     ExceptionFree(exception);
@@ -166,4 +163,5 @@ void TestCollections()
     TestDictionary();
 
     PrintTestStatus(NULL);
+    MetaTest(TestsPassed, TestsRun);
 }

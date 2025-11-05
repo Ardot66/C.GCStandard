@@ -36,4 +36,7 @@ void *GCIterateHeap(size_t *index, GCAllocationData *data);
 // Prints the current status of the heap for debugging.
 void GCPrintHeap();
 
+// Neatly prints a span of memory.
+void GCPrintMemory(const void *ptr, const size_t size);
+
 #endif
