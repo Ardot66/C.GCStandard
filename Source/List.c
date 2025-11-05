@@ -17,6 +17,7 @@ void ListAutoResize (ListGeneric *list, size_t newElementsCount, size_t elemSize
 
 void ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t elemSize)
 {
+    ThrowIf(newLength < list->Count, "List cannot be resized to be smaller than its count");
     ListGeneric *temp = GCRealloc(list->V, newLength * elemSize);
 
     list->V = temp;
@@ -25,6 +26,7 @@ void ListResizeGeneric(ListGeneric *list, const size_t newLength, const size_t e
 
 void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const size_t count, const size_t elemSize)
 {
+    ThrowIf(startIndex + count > list->Count, "Cannot remove elements out of the bounds of a list");
     memmove(
         (char *)list->V + startIndex * elemSize, 
         (char *)list->V + (startIndex + count) * elemSize,
@@ -36,7 +38,7 @@ void ListRemoveRangeGeneric(ListGeneric *list, const size_t startIndex, const si
 
 void ListInsertRangeGeneric(ListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
 {
-    ThrowIf(index > list->Count);
+    ThrowIf(index > list->Count, "Cannot insert elements past the end of a list");
     ListAutoResize(list, rangeCount, elemSize);
 
     if(index < list->Count)

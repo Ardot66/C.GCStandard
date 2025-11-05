@@ -90,7 +90,7 @@ static inline void *GCMallocInternal(const size_t size)
 void *GCMalloc(const size_t size)
 {
     void *ptr = GCMallocInternal(size);
-    ThrowIf(ptr == NULL, strerror(errno));
+    ThrowIf(ptr == NULL, "Unable to allocate memory", strerror(errno));
     return ptr;
 }
 
@@ -102,7 +102,7 @@ void *GCMallocNoExcept(const size_t size)
 void *GCCalloc(const size_t size)
 {
     void *ptr = GCMallocInternal(size);
-    ThrowIf(ptr == NULL, strerror(errno));
+    ThrowIf(ptr == NULL, "Unable to allocate memory", strerror(errno));
     memset(ptr, 0, size);
     return ptr;
 }
@@ -141,7 +141,7 @@ static inline void *GCReallocInternal(void *oldPtr, const size_t size)
 void *GCRealloc(void *oldPtr, const size_t size)
 {
     void *ptr = GCReallocInternal(oldPtr, size);
-    ThrowIf(ptr == NULL, strerror(errno));
+    ThrowIf(ptr == NULL, "Unable to reallocate memory", strerror(errno));
     return ptr;
 }
 

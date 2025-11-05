@@ -58,7 +58,7 @@ void TestException()
     ExceptionFree(exception);
 
     TryBegin(exception);
-        ThrowIf(1 == 1);
+        ThrowIf(1 == 1, "Message");
     TryEnd;
 
     ExceptionFree(exception);

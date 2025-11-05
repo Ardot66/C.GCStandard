@@ -77,15 +77,10 @@ do {\
     GCInternalExceptionJump(GCInternalThreadData.NextExitFunc, GCInternalThreadData.Exception);\
 }while (0)
 
-#define ThrowMsgIf(statement, message)\
+// Throws an exception if the statement evaluates to be true.
+#define ThrowIf(statement, message, ...)\
 if(statement)\
-    Throw(error, message)
-
-// Confirms that a statement is true, throwing an exception otherwise.
-// Always contains the error message "Assertion failed".
-#define ThrowIf(statement, ...)\
-if(statement)\
-    Throw("Error detected: (" #statement ")", ## __VA_ARGS__)
+    Throw(message, ## __VA_ARGS__)
 
 // Marks the beginning of a try block, in which any exceptions will be caught and placed in the passed exception variable
 // for handling after the try block ends. Any non-null exception needs to be freed using ExceptionFree.

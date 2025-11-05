@@ -61,7 +61,7 @@ int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
 {
     if(queue->List.Count == 0)
         return -1;
-    ThrowIf(queue->List.Count < sizeof *commandDest);
+    ThrowIf(queue->List.Count < sizeof *commandDest, "Not enough data on command queue to pop command code");
 
     for(size_t x = 0; x < sizeof(uint32_t); x++)
         ((char *)commandDest)[x] = CListGet(&queue->List, x);
@@ -73,7 +73,7 @@ int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
 
 void CommandQueuePopParam(CommandQueue *queue, const size_t paramSize, void *paramDest)
 {
-    ThrowIf(queue->List.Count < paramSize);
+    ThrowIf(queue->List.Count < paramSize, "Not enough data on command queue to pop param");
 
     for(size_t x = 0; x < paramSize; x++)
         ((char *)paramDest)[x] = CListGet(&queue->List, x);
