@@ -17,9 +17,33 @@ void PrintCommandQueue(CommandQueue *queue)
     printf("\n");
 }
 
-void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const size_t paramCount, const size_t *paramSizes, const void **params)
+void CommandQueueLock(CommandQueue *queue)
 {
     pthread_mutex_lock(&queue->Mutex);
+}
+
+void CommandQueueUnlock(CommandQueue *queue)
+{
+    pthread_cond_broadcast(&queue->Signal);
+    pthread_mutex_unlock(&queue->Mutex);
+}
+
+void CommandQueueWait(CommandQueue *queue, Timespec *time)
+{
+    if(queue->List.Count > 0)
+        return;
+        
+    pthread_mutex_lock(&queue->Mutex);
+    if(time)
+        pthread_cond_timedwait(&queue->Signal, &queue->Mutex, time);
+    else
+        pthread_cond_wait(&queue->Signal, &queue->Mutex);
+    pthread_mutex_unlock(&queue->Mutex);
+}
+
+void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const size_t paramCount, const size_t *paramSizes, const void **params)
+{
+    CommandQueueLock(queue);
     ExitInit();
 
     CommandHeader header =
@@ -37,23 +61,13 @@ void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const s
         // This handles the possibility that the command queue is corrupted if any of the CListAdd calls fail.
         IfExitException
             CListRemoveRange(&queue->List, startIndex, queue->List.Count - startIndex);
-        pthread_mutex_unlock(&queue->Mutex);
+        CommandQueueUnlock(queue);
     ExitEnd();
 }
 
 void CommandQueuePush(CommandQueue *queue, const uint32_t command, const size_t paramSize, const void *param)
 {
     CommandQueuePushParams(queue, command, 1, &paramSize, &param);
-}
-
-void CommandQueueLock(CommandQueue *queue)
-{
-    pthread_mutex_lock(&queue->Mutex);
-}
-
-void CommandQueueUnlock(CommandQueue *queue)
-{
-    pthread_mutex_unlock(&queue->Mutex);
 }
 
 // Pop commands cannot fail in dangerous ways, so it is fine to have them split up like so for convenience.
