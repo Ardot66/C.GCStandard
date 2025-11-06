@@ -124,7 +124,7 @@ static int WatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *file
         return 1;
 
     allocData->ExtraPCs->PCs[allocData->ExtraPCs->Count++] = pc;
-    return strcmp("main", function) == 0;
+    return function == NULL ? 0 : strcmp("main", function) == 0;
 }
 
 static void WatchHeapMallocCallback(void *ptr, const size_t size)
