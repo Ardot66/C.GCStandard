@@ -46,6 +46,8 @@ void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t
         (char *)list->V + (list->Length - preloopCount) * elemSize,
         preloopCount * elemSize
     );
+    if(preloopCount != 0)
+        list->Offset = newLength - preloopCount;
 
     list->Length = newLength;
 }
@@ -55,7 +57,7 @@ void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t
     ThrowIf(index > list->Count, "Cannot insert elements past the end of a list");
 
     if(list->Count + rangeCount > list->Length)
-        CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2 + 1, elemSize);
+        CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2, elemSize);
 
     // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
     if(index + (rangeCount >> 1) < list->Count >> 1)

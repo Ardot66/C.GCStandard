@@ -63,7 +63,7 @@ static inline void CheckPaddingContaminatedPrintBlockInfo(size_t size)
     printf("%zd: End of main memory block\n", (ssize_t)size - 1);
 }
 
-static inline void CheckPaddingContaminated(const void *ptr)
+void GCCheckMemoryPadding(const void *ptr)
 {
     pthread_mutex_lock(&HeapDictMutex);
     ssize_t index = DictIndexOf(&HeapDict, ptr, DictDefaultFunctions);
@@ -190,7 +190,7 @@ static void *WatchHeapCustomAllocator(const size_t size)
 static void *WatchHeapCustomReallocator(void *oldPtr, const size_t size)
 {
     if(!GCInternalThreadData.HeapCallbackActive)
-        CheckPaddingContaminated((char *)oldPtr);
+        GCCheckMemoryPadding((char *)oldPtr);
     else 
         return realloc(oldPtr, size);
 
@@ -205,7 +205,7 @@ static void *WatchHeapCustomReallocator(void *oldPtr, const size_t size)
 static void WatchHeapCustomDeallocator(void *ptr)
 {
     if(!GCInternalThreadData.HeapCallbackActive)
-        CheckPaddingContaminated((char *)ptr);
+        GCCheckMemoryPadding((char *)ptr);
     else
         return free(ptr);
 
@@ -291,6 +291,34 @@ void GCPrintHeap()
     GCAllocationData data;
     for(size_t index = 0; (ptr = GCIterateHeap(&index, &data)) != NULL; index++)
         PrintAllocation(ptr, data);
+}
+
+void GCPrintHeapPadding()
+{
+    void *ptr;
+    for(size_t index = 0; (ptr = GCIterateHeap(&index, NULL)) != NULL; index++)
+        GCCheckMemoryPadding(ptr);
+}
+
+static int PrintBacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
+{
+    (void)data;
+    (void)lineno;
+    if(pc == UINTPTR_MAX)
+        return 1;
+
+    if(function == NULL)
+        function = "??";
+    if(filename == NULL)
+        filename = "??";
+
+    printf("   %s() in %s:%d\n", function, filename, lineno);
+    return 0;
+}
+
+void GCPrintBacktrace()
+{
+    backtrace_full(GCInternalGetBacktraceState(), 1, PrintBacktraceCallback, NULL, NULL);
 }
 
 void GCPrintMemory(const void *ptr, const size_t size)

@@ -10,13 +10,6 @@ typedef struct CommandHeader
     uint32_t Type;
 } CommandHeader;
 
-void PrintCommandQueue(CommandQueue *queue)
-{
-    for(size_t x = 0; x < queue->List.Count; x++)
-        printf("%02X ", (unsigned char)CListGet(&queue->List, x));
-    printf("\n");
-}
-
 void CommandQueueLock(CommandQueue *queue)
 {
     pthread_mutex_lock(&queue->Mutex);
@@ -55,7 +48,6 @@ void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const s
     CListAddRange(&queue->List, &header, sizeof(header));
     for(size_t x = 0; x < paramCount; x++)
         CListAddRange(&queue->List, params[x], paramSizes[x]);
-    // printf("Pushed: "); PrintCommandQueue(queue);
 
     ExitBegin();
         // This handles the possibility that the command queue is corrupted if any of the CListAdd calls fail.
@@ -79,7 +71,6 @@ int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
 
     for(size_t x = 0; x < sizeof(uint32_t); x++)
         ((char *)commandDest)[x] = CListGet(&queue->List, x);
-    // printf("Popped: (%u)", *commandDest); PrintCommandQueue(queue);
     CListRemoveRange(&queue->List, 0, sizeof(*commandDest));
 
     return 0;
