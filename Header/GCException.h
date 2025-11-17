@@ -34,7 +34,7 @@ Exception *GCInternalExceptionCreate(uint64_t line, const char *file, const char
 // The identifier parameter must only be set when multiple exit blocks exist within a single scope,
 // in which case all but one exit block must have a unique identifier.
 #define ExitInit(identifier) \
-auto GCInternalExitFuncBox GCInternalExit ## identifier(Exception *);\
+auto GCInternalExitFuncBox GCInternalExit ## identifier(GCInternalExitFuncBox *, Exception *);\
 GCInternalExitFunc GCInternalNextExit ## identifier = GCInternalThreadData.NextExitFunc; \
 GCInternalThreadData.NextExitFunc = GCInternalExit ## identifier
 
@@ -45,10 +45,10 @@ GCInternalThreadData.NextExitFunc = GCInternalExit ## identifier
 //
 // See ExitInit for the use case of the identifier parameter, which can usually be left empty.
 #define ExitBegin(identifier)\
-GCInternalExit ## identifier(NULL);\
-GCInternalExitFuncBox GCInternalExit ## identifier(Exception *gcInternalException) {\
+GCInternalExit ## identifier((GCInternalExitFuncBox *)&GCInternalThreadData.NextExitFunc, NULL);\
+GCInternalExitFuncBox GCInternalExit ## identifier(GCInternalExitFuncBox *gcInternalNextExitFunc, Exception *gcInternalException) {\
     (void)gcInternalException;\
-    GCInternalThreadData.NextExitFunc = GCInternalNextExit ## identifier;\
+    *(GCInternalExitFunc *)gcInternalNextExitFunc = GCInternalNextExit ## identifier;\
 do {} while (0)
 
 // Used to check if the exit block has been triggered by an exception, which can be useful when freeing

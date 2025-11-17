@@ -6,7 +6,7 @@
 
 typedef struct Exception Exception;
 typedef void (* GCInternalExitFuncBox)();
-typedef GCInternalExitFuncBox (* GCInternalExitFunc)(Exception *gcInternalException);
+typedef GCInternalExitFuncBox (* GCInternalExitFunc)(GCInternalExitFuncBox *gcInternalNextExitFunc, Exception *gcInternalException);
 
 // Thread local data needs to be wrapped in a single struct, weird overlapping stuff was happening otherwise.
 struct GCInternalThreadData

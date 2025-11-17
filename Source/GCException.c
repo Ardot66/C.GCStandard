@@ -11,7 +11,7 @@ static int FallbackExceptionInUse = 0;
 void GCInternalExceptionJump(GCInternalExitFunc nextExit, Exception *exception)
 {
     while(nextExit != NULL)
-        nextExit = (GCInternalExitFunc)nextExit(exception);
+        nextExit = (GCInternalExitFunc)nextExit((GCInternalExitFuncBox *)&GCInternalThreadData.NextExitFunc, exception);
 
     if(GCInternalThreadData.NextBufRef == NULL)
     {
