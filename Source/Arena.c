@@ -1,37 +1,46 @@
 #include "GCArena.h"
 #include "GCMemory.h"
 
-static inline void GCArenaAddBlock(GCArena *arena, const size_t size)
+static inline GCError GCArenaAddBlock(GCArena *arena, const size_t size)
 {
     size_t blockSize = arena->ActiveBlock != NULL ? arena->ActiveBlock->Size << 1 : 64;
     while(blockSize < size)
         blockSize <<= 1;
 
     GCArenaBlock *block = GCMalloc(sizeof(*block) * blockSize);
+    if(block == NULL)
+        GotoError;
     block->Size = blockSize;
     block->Next = arena->ActiveBlock;
     arena->ActiveBlock = block;
     arena->Used = 0;
+
+    ErrorLabel;
+    return Error;
 }
 
 void *GCArenaAllocate(GCArena *arena, const size_t size)
 {
     if(arena->ActiveBlock == NULL)
-        GCArenaAddBlock(arena, size);
+        Try(GCArenaAddBlock(arena, size));
 
     if(arena->ActiveBlock->Size - arena->Used < size)
-        GCArenaAddBlock(arena, size);
+        Try(GCArenaAddBlock(arena, size));
     
     void *ptr = arena->ActiveBlock->Data + arena->Used;
     arena->Used += size;
+
+    ErrorLabel;
+    IfError
+        return NULL;
     return ptr;
 }
 
-void GCArenaReserve(GCArena *arena, const size_t size)
+GCError GCArenaReserve(GCArena *arena, const size_t size)
 {
     if(arena->ActiveBlock != NULL && size < arena->ActiveBlock->Size - arena->Used)
-        return;
-    GCArenaAddBlock(arena, size);
+        return GC_SUCCESS;
+    return GCArenaAddBlock(arena, size);
 }
 
 void GCArenaFree(GCArena *arena)

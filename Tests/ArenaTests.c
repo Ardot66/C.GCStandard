@@ -10,17 +10,21 @@ void TestArena()
 
     GCArena arena = GCArenaDefault;
 
-    GCArenaReserve(&arena, 100);
+    Try(GCArenaReserve(&arena, 100));
 
-    const size_t allocCount = 20;
-    void *allocation[allocCount];
-    for(size_t x = 0; x < allocCount; x++)
     {
-        const size_t blockSize = 58;
-        allocation[x] = GCArenaAllocate(&arena, blockSize);
-        memset(allocation[x], 0, blockSize);
-        if(x != 0)
-            TEST(allocation[x], >, (char *)allocation[x - 1] + blockSize - 1);
+        const size_t allocCount = 20;
+        void *allocation[allocCount];
+        for(size_t x = 0; x < allocCount; x++)
+        {
+            const size_t blockSize = 58;
+            allocation[x] = GCArenaAllocate(&arena, blockSize);
+            if(allocation[x] == NULL)
+                GotoError;
+            memset(allocation[x], 0, blockSize);
+            if(x != 0)
+                TEST(allocation[x], >, (char *)allocation[x - 1] + blockSize - 1);
+        }
     }
 
     GCArenaFree(&arena);
@@ -31,4 +35,11 @@ void TestArena()
 
     PrintTestStatus(NULL);
     MetaTest(TestsPassed, TestsRun);
+
+    ErrorLabel;
+    IfError
+    {
+        ErrorInfoPrint(ErrorInfoGetCurrent());
+        TEST(1, ==, 0);
+    }
 }

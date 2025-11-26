@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "GCCList.h"
-#include "GCException.h"
+#include "GCResult.h"
 #include "GCMemory.h"
 
 static inline void *CListIndex(CListGeneric *list, const size_t index, const size_t elemSize)
@@ -32,11 +32,14 @@ static inline void CListMoveGeneric(CListGeneric *list, const size_t startIndex,
         memcpy(CListIndex(list, endIndex + add + x * directionMultiplier, elemSize), CListIndex(list, startIndex + add + x * directionMultiplier, elemSize), elemSize);
 }
 
-void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize)
+GCError CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t elemSize)
 {
-    ThrowIf(newLength < list->Count, "List cannot be resized to be smaller than its count");
+    if(newLength < list->Count)
+        Throw(EINVAL, "List cannot be resized to be smaller than its count");
 
     CListGeneric *temp = GCRealloc(list->V, newLength * elemSize);
+    if(temp == NULL)
+        GotoError;
 
     list->V = temp;
     size_t preloopCount = (list->Length - list->Offset) * (list->Offset + list->Count > list->Length);
@@ -50,14 +53,18 @@ void CListResizeGeneric(CListGeneric *list, const size_t newLength, const size_t
         list->Offset = newLength - preloopCount;
 
     list->Length = newLength;
+
+    ErrorLabel;
+    return Error;
 }
 
-void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
+GCError CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t index, const size_t elemSize)
 {
-    ThrowIf(index > list->Count, "Cannot insert elements past the end of a list");
+    if(index > list->Count)
+        Throw(EINVAL, "Cannot insert elements past the end of a list");
 
     if(list->Count + rangeCount > list->Length)
-        CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2, elemSize);
+        Try(CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2, elemSize));
 
     // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
     if(index + (rangeCount >> 1) < list->Count >> 1)
@@ -72,26 +79,30 @@ void CListInsertRangeGeneric(CListGeneric *list, const void *range, const size_t
         for(size_t x = 0; x < rangeCount; x++)
             memcpy(CListIndex(list, index + x, elemSize), (char *)range + x * elemSize, elemSize);
     list->Count += rangeCount;
+
+    ErrorLabel; 
+    return Error;
 }
 
-void CListInsertGeneric(CListGeneric *list, const void *value, const size_t index, const size_t elemSize)
+GCError CListInsertGeneric(CListGeneric *list, const void *value, const size_t index, const size_t elemSize)
 {
-    CListInsertRangeGeneric(list, value, 1, index, elemSize);
+    return CListInsertRangeGeneric(list, value, 1, index, elemSize);
 }
 
-void CListAddRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize)
+GCError CListAddRangeGeneric(CListGeneric *list, const void *range, const size_t rangeCount, const size_t elemSize)
 {
-    CListInsertRangeGeneric(list, range, rangeCount, list->Count, elemSize);
+    return CListInsertRangeGeneric(list, range, rangeCount, list->Count, elemSize);
 }
 
-void CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize)
+GCError CListAddGeneric(CListGeneric *list, const void *value, const size_t elemSize)
 {
-    CListInsertRangeGeneric(list, value, 1, list->Count, elemSize);
+    return CListInsertRangeGeneric(list, value, 1, list->Count, elemSize);
 }
 
-void CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_t rangeCount, const size_t elemSize)
+GCError CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_t rangeCount, const size_t elemSize)
 {
-    ThrowIf(index + rangeCount > list->Count, "Cannot remove elements out of the bounds of a list");
+    if(index + rangeCount > list->Count)
+        Throw(EINVAL, "Cannot remove elements out of the bounds of a list");
 
     // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
     if(index < list->Count >> 1)
@@ -103,11 +114,14 @@ void CListRemoveRangeGeneric(CListGeneric *list, const size_t index, const size_
         CListMoveGeneric(list, index + rangeCount, index, list->Count - index - rangeCount, elemSize);
 
     list->Count -= rangeCount;
+
+    ErrorLabel; 
+    return Error;
 }
 
-void CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize)
+GCError CListRemoveAtGeneric(CListGeneric *list, const size_t index, const size_t elemSize)
 {
-    CListRemoveRangeGeneric(list, index, 1, elemSize);
+    return CListRemoveRangeGeneric(list, index, 1, elemSize);
 }
 
 void CListClearGeneric(CListGeneric *list)

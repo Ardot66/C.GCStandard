@@ -1,6 +1,6 @@
 #include "GCCommandQueue.h"
 #include "GCTime.h"
-#include "GCException.h"
+#include "GCResult.h"
 #include "GCTestingUtilities.h"
 #include "Tests.h"
 #include <stdlib.h>
@@ -25,24 +25,20 @@ typedef struct ThreadInfo
 void *CommandQueueThread(void *params)
 {
     ThreadInfo *threadInfo = params;
+    Try(CommandQueuePush(&threadInfo->Queue, COMMAND_TYPE_SUCCESS, sizeof(CommandParams), CommandParams));
 
-    Exception *exception;
-    TryBegin(exception);
-    CommandQueuePush(&threadInfo->Queue, COMMAND_TYPE_SUCCESS, sizeof(CommandParams), CommandParams);
-    TryEnd;
+    ErrorLabel;
+    IfError
+    {
+        ErrorInfoPrint(ErrorInfoGetCurrent());
+        TEST(1, ==, 0);
+    }
 
-    TEST(exception, ==, NULL, ExceptionPrint(exception); exit(EXIT_FAILURE););
-    ExceptionFree(exception);
-
-    pthread_exit(NULL);
     return NULL;
 }
 
 void TestCommandQueue()
 {
-    Exception *exception;
-    TryBegin(exception);
-
     ThreadInfo info =
     {
         .Queue = CommandQueueDefault
@@ -63,31 +59,41 @@ void TestCommandQueue()
         CommandQueueLock(&info.Queue);
 
         uint32_t command;
-        if(!CommandQueuePop(&info.Queue, &command))
+        switch (CommandQueuePop(&info.Queue, &command))
         {
-            if(command == COMMAND_TYPE_SUCCESS)
+            ErrorCase;
+            case GC_RESULT_SUCCESS:
             {
-                successful = 1;
-                int paramsDest[sizeof(CommandParams) / sizeof(*CommandParams)];
-                CommandQueuePopParam(&info.Queue, sizeof(CommandParams), paramsDest);
-                for(size_t x = 0; x < sizeof(CommandParams) / sizeof(*CommandParams); x++)
-                    TEST(paramsDest[x], ==, CommandParams[x]);
+                if(command == COMMAND_TYPE_SUCCESS)
+                {
+                    successful = 1;
+                    int paramsDest[sizeof(CommandParams) / sizeof(*CommandParams)];
+                    Try(CommandQueuePopParam(&info.Queue, sizeof(CommandParams), paramsDest));
+                    for(size_t x = 0; x < sizeof(CommandParams) / sizeof(*CommandParams); x++)
+                        TEST(paramsDest[x], ==, CommandParams[x]);
+                }
+                else 
+                    goto BreakWhile;
             }
-            else 
-                break;
+            default: break;
         }
 
         CommandQueueUnlock(&info.Queue);
     }
 
+    BreakWhile:
+
     void *res;
     pthread_join(thread, &res);
 
     TEST(successful, ==, 1);
-    TryEnd;
 
-    TEST(exception, ==, NULL, ExceptionPrint(exception););
-    ExceptionFree(exception);
+    ErrorLabel;
+    IfError
+    {
+        ErrorInfoPrint(ErrorInfoGetCurrent());
+        TEST(1, ==, 0);
+    }
 
     PrintTestStatus(NULL);
     MetaTest(TestsPassed, TestsRun);

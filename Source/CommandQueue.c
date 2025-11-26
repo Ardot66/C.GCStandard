@@ -1,5 +1,5 @@
 #include "GCCommandQueue.h"
-#include "GCException.h"
+#include "GCResult.h"
 #include <errno.h>
 
 #include "GCAssert.h"
@@ -34,10 +34,9 @@ void CommandQueueWait(CommandQueue *queue, Timespec *time)
     pthread_mutex_unlock(&queue->Mutex);
 }
 
-void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const size_t paramCount, const size_t *paramSizes, const void **params)
+GCError CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const size_t paramCount, const size_t *paramSizes, const void **params)
 {
     CommandQueueLock(queue);
-    ExitInit();
 
     CommandHeader header =
     {
@@ -45,44 +44,51 @@ void CommandQueuePushParams(CommandQueue *queue, const uint32_t command, const s
     };
 
     const size_t startIndex = queue->List.Count;
-    CListAddRange(&queue->List, &header, sizeof(header));
+    Try(CListAddRange(&queue->List, &header, sizeof(header)));
     for(size_t x = 0; x < paramCount; x++)
-        CListAddRange(&queue->List, params[x], paramSizes[x]);
+        Try(CListAddRange(&queue->List, params[x], paramSizes[x]));
 
-    ExitBegin();
-        // This handles the possibility that the command queue is corrupted if any of the CListAdd calls fail.
-        IfExitException
-            CListRemoveRange(&queue->List, startIndex, queue->List.Count - startIndex);
-        CommandQueueUnlock(queue);
-    ExitEnd();
+    ErrorLabel;
+    // This handles the possibility that the command queue is corrupted if any of the CListAdd calls fail.
+    IfError
+        CListRemoveRange(&queue->List, startIndex, queue->List.Count - startIndex);
+
+    CommandQueueUnlock(queue);
+    return Error;
 }
 
-void CommandQueuePush(CommandQueue *queue, const uint32_t command, const size_t paramSize, const void *param)
+GCError CommandQueuePush(CommandQueue *queue, const uint32_t command, const size_t paramSize, const void *param)
 {
-    CommandQueuePushParams(queue, command, 1, &paramSize, &param);
+    return CommandQueuePushParams(queue, command, 1, &paramSize, &param);
 }
 
 // Pop commands cannot fail in dangerous ways, so it is fine to have them split up like so for convenience.
-int CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
+GCResult CommandQueuePop(CommandQueue *queue, uint32_t *commandDest)
 {
     if(queue->List.Count == 0)
-        return -1;
-    ThrowIf(queue->List.Count < sizeof *commandDest, "Not enough data on command queue to pop command code");
+        return GC_RESULT_FAILURE;
+    if(queue->List.Count < sizeof *commandDest)
+        Throw(EINVAL, "Not enough data on command queue to pop command code");
 
     for(size_t x = 0; x < sizeof(uint32_t); x++)
         ((char *)commandDest)[x] = CListGet(&queue->List, x);
-    CListRemoveRange(&queue->List, 0, sizeof(*commandDest));
+    Try(CListRemoveRange(&queue->List, 0, sizeof(*commandDest)));
 
-    return 0;
+    ErrorLabel;
+    return (GCResult)Error;
 }
 
-void CommandQueuePopParam(CommandQueue *queue, const size_t paramSize, void *paramDest)
+GCError CommandQueuePopParam(CommandQueue *queue, const size_t paramSize, void *paramDest)
 {
-    ThrowIf(queue->List.Count < paramSize, "Not enough data on command queue to pop param");
+    if(queue->List.Count < paramSize)
+        Throw(EINVAL, "Not enough data on command queue to pop param");
 
     for(size_t x = 0; x < paramSize; x++)
         ((char *)paramDest)[x] = CListGet(&queue->List, x);
-    CListRemoveRange(&queue->List, 0, paramSize);
+    Try(CListRemoveRange(&queue->List, 0, paramSize));
+
+    ErrorLabel;
+    return Error;
 }
 
 void CommandQueueFree(CommandQueue *queue)

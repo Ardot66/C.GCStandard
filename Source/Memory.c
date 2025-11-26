@@ -1,6 +1,5 @@
-#include "GCInternalGlobals.h"
 #include "GCMemory.h"
-#include "GCException.h"
+#include "GCResult.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,11 +10,11 @@ static void *(*CustomReallocator)(void *oldPtr, const size_t size) = NULL;
 static void (*CustomDeallocator)(void *ptr) = NULL;
 
 // Custom functions for adding additional behaviours to memory allocation.
-static void (*MallocCallback)(void *ptr, const size_t size) = NULL;
-static void (*ReallocCallback)(void *oldPtr, void *ptr, const size_t size) = NULL;
+static GCError (*MallocCallback)(void *ptr, const size_t size) = NULL;
+static GCError (*ReallocCallback)(void *oldPtr, void *ptr, const size_t size) = NULL;
 static void (*FreeCallback)(void *ptr) = NULL;
 
-static const char *CallbackErrorMessage = "Exception occurred within a GCMemory callback, printing immediately:\n";
+thread_local bool HeapCallbackActive = false;
 
 void GCSetCustomAllocator(void *(* allocator)(const size_t size))
 {
@@ -32,12 +31,12 @@ void GCSetCustomDeallocator(void (* deallocator)(void *ptr))
     CustomDeallocator = deallocator;
 }
 
-void GCSetMallocCallback(void (*callback)(void *ptr, const size_t size))
+void GCSetMallocCallback(GCError (*callback)(void *ptr, const size_t size))
 {
     MallocCallback = callback;
 }
 
-void GCSetReallocCallback(void (*reallocCallback)(void *oldPtr, void *ptr, const size_t size))
+void GCSetReallocCallback(GCError (*reallocCallback)(void *oldPtr, void *ptr, const size_t size))
 {
     ReallocCallback = reallocCallback;
 }
@@ -49,105 +48,82 @@ void GCSetFreeCallback(void (*callback)(void *ptr))
 
 static inline void CallbackBegin()
 {
-    GCInternalThreadData.HeapCallbackActive = true;
+    HeapCallbackActive = true;
 }
 
-static inline void CallbackEnd(Exception *exception)
+static inline void CallbackEnd()
 {
-    GCInternalThreadData.HeapCallbackActive = false;
-
-    if(exception)
-    {
-        fprintf(stderr, CallbackErrorMessage);
-        ExceptionPrint(exception);
-    }
-    ExceptionFree(exception);
-}
-
-
-static inline void *GCMallocInternal(const size_t size)
-{
-    void *ptr;
-    if(CustomAllocator != NULL)
-        ptr = CustomAllocator(size);
-    else
-        ptr = malloc(size);
-
-    if(MallocCallback != NULL && ptr != NULL && !GCInternalThreadData.HeapCallbackActive)
-    {
-        // NOTE, the use of try blocks here is quite expensive, and a better solution may be possible.
-        CallbackBegin();
-        Exception *exception;
-        TryBegin(exception);
-            MallocCallback(ptr, size);
-        TryEnd;
-        CallbackEnd(exception);
-    }
-        
-    return ptr;
+    HeapCallbackActive = false;
 }
 
 void *GCMalloc(const size_t size)
 {
-    void *ptr = GCMallocInternal(size);
-    ThrowIf(ptr == NULL, "Unable to allocate memory", strerror(errno));
-    return ptr;
-}
+    void *ptr;
+    if(CustomAllocator != NULL)
+    {
+        ptr = CustomAllocator(size);
+        if(ptr == NULL)
+            GotoError;
+    }
+    else
+    {
+        ptr = malloc(size);
+        if(!ptr)
+            Throw(errno, "Failed to allocate memory");
+    }
 
-void *GCMallocNoExcept(const size_t size)
-{
-    return GCMallocInternal(size);
+    if(MallocCallback != NULL && ptr != NULL && !HeapCallbackActive)
+    {
+        CallbackBegin();
+        Try(MallocCallback(ptr, size));
+        CallbackEnd();
+    }
+        
+    ErrorLabel;
+    IfError
+        return NULL;
+    return ptr;
 }
 
 void *GCCalloc(const size_t size)
 {
-    void *ptr = GCMallocInternal(size);
-    ThrowIf(ptr == NULL, "Unable to allocate memory", strerror(errno));
+    void *ptr = GCMalloc(size);
+    if(!ptr)
+        return NULL;
     memset(ptr, 0, size);
-    return ptr;
-}
-
-void *GCCallocNoExcept(const size_t size)
-{
-    void *ptr = GCMallocInternal(size);
-    memset(ptr, 0, size);
-    return ptr;
-}
-
-static inline void *GCReallocInternal(void *oldPtr, const size_t size)
-{
-    void *ptr;
-    // The malloc callback should handle this case
-    if(oldPtr == NULL)
-        return GCMallocInternal(size);
-    else if(CustomReallocator != NULL)
-        ptr = CustomReallocator(oldPtr, size);
-    else
-        ptr = realloc(oldPtr, size);
-
-    if(ReallocCallback != NULL && ptr != NULL && !GCInternalThreadData.HeapCallbackActive)
-    {
-        CallbackBegin();
-        Exception *exception;
-        TryBegin(exception);
-            ReallocCallback(oldPtr, ptr, size);
-        TryEnd;
-        CallbackEnd(exception);
-    }
-    
     return ptr;
 }
 
 void *GCRealloc(void *oldPtr, const size_t size)
 {
-    void *ptr = GCReallocInternal(oldPtr, size);
-    ThrowIf(ptr == NULL, "Unable to reallocate memory", strerror(errno));
-    return ptr;
-}
+    void *ptr;
+    // The malloc callback should handle this case
+    if(oldPtr == NULL)
+        return GCMalloc(size);
+    else if(CustomReallocator != NULL)
+    {
+        ptr = CustomReallocator(oldPtr, size);
+        if(ptr == NULL)
+            GotoError;
+    }
+    else
+    {
+        ptr = realloc(oldPtr, size);
+        if(!ptr)
+            Throw(errno, "Failed to reallocate memory");
+    }
 
-void *GCReallocNoExcept(void *oldPtr, const size_t size)
-{
-    return GCReallocInternal(oldPtr, size);
+    if(ReallocCallback != NULL && ptr != NULL && !HeapCallbackActive)
+    {
+        CallbackBegin();
+        Try(ReallocCallback(oldPtr, ptr, size));
+        CallbackEnd();
+    }
+    
+    ErrorLabel;
+    IfError
+        return NULL;
+    return ptr;
 }
 
 void GCFree(void *ptr)
@@ -155,14 +131,11 @@ void GCFree(void *ptr)
     if(ptr == NULL)
         return;
 
-    if(FreeCallback != NULL && ptr != NULL && !GCInternalThreadData.HeapCallbackActive)
+    if(FreeCallback != NULL && ptr != NULL && !HeapCallbackActive)
     {
         CallbackBegin();
-        Exception *exception;
-        TryBegin(exception);
-            FreeCallback(ptr);
-        TryEnd;
-        CallbackEnd(exception);
+        FreeCallback(ptr);
+        CallbackEnd();
     }
 
     if(CustomDeallocator != NULL)

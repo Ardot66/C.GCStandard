@@ -1,7 +1,6 @@
-#include "GCInternalGlobals.h"
+#include "GCInternal.h"
 #include <backtrace.h>
 
-thread_local struct GCInternalThreadData GCInternalThreadData = {0};
 static struct backtrace_state *BacktraceState = NULL;
     
 struct backtrace_state *GCInternalGetBacktraceState()

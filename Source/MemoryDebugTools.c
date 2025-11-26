@@ -1,8 +1,6 @@
-#include "GCInternalGlobals.h"
-
 #include "GCMemoryDebugTools.h"
 #include "GCMemory.h"
-#include "GCException.h"
+#include "GCResult.h"
 #include "GCDictionary.h"
 #include "GCAssert.h"
 
@@ -11,6 +9,9 @@
 #include <string.h>
 #include <backtrace.h>
 #include <pthread.h>
+
+struct backtrace_state;
+struct backtrace_state *GCInternalGetBacktraceState();
 
 typedef void (*Func)();
 DictDefine(Func, GCAllocationData, DictFunctionAllocationData);
@@ -127,7 +128,7 @@ static int WatchHeapBacktraceCallback(void *data, uintptr_t pc, const char *file
     return function == NULL ? 0 : strcmp("main", function) == 0;
 }
 
-static void WatchHeapMallocCallback(void *ptr, const size_t size)
+static GCError WatchHeapMallocCallback(void *ptr, const size_t size)
 {
     GCAllocationData data = 
     {
@@ -138,30 +139,31 @@ static void WatchHeapMallocCallback(void *ptr, const size_t size)
     backtrace_full(GCInternalGetBacktraceState(), 2, WatchHeapBacktraceCallback, NULL, &data);
 
     pthread_mutex_lock(&HeapDictMutex);
-    ExitInit();
-    DictAdd(&HeapDict, ptr, data, DictDefaultFunctions);
-    ExitBegin();
-        IfExitException
-            GCFree(data.ExtraPCs);
-        pthread_mutex_unlock(&HeapDictMutex);
-    ExitEnd();
+    Try(DictAdd(&HeapDict, ptr, data, NULL, DictDefaultFunctions));
+
+    ErrorLabel;
+    IfError
+        GCFree(data.ExtraPCs);
+    
+    pthread_mutex_unlock(&HeapDictMutex);
+    return Error;
 }
 
-static void WatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t size)
+static GCError WatchHeapReallocCallback(void *oldPtr, void *ptr, const size_t size)
 {
     pthread_mutex_lock(&HeapDictMutex);
-    ExitInit();
+
     ssize_t oldIndex = DictIndexOf(&HeapDict, oldPtr, DictDefaultFunctions);
     Assert(oldIndex != -1);
 
     GCAllocationData data = DictGetValue(&HeapDict, oldIndex);
     data.Size = size;
     DictRemove(&HeapDict, oldIndex, DictDefaultFunctions);
-    DictAdd(&HeapDict, ptr, data, DictDefaultFunctions);
+    Try(DictAdd(&HeapDict, ptr, data, NULL, DictDefaultFunctions));
 
-    ExitBegin();
-        pthread_mutex_unlock(&HeapDictMutex);
-    ExitEnd();
+    ErrorLabel;
+    pthread_mutex_unlock(&HeapDictMutex);
+    return Error;
 }
 
 static void WatchHeapFreeCallback(void *ptr)
@@ -176,35 +178,43 @@ static void WatchHeapFreeCallback(void *ptr)
 
 static void *WatchHeapCustomAllocator(const size_t size)
 {
-    if(GCInternalThreadData.HeapCallbackActive)
+    if(HeapCallbackActive)
         return malloc(size);
 
     void *ptr = malloc(size + AllocationPadding * 2);
     if(ptr == NULL)
-        return NULL;
+        Throw(errno, "Failed to allocate memory");
 
     FillPadding(ptr, size);
+
+    ErrorLabel;
+    IfError
+        return NULL;
     return (char *)ptr + AllocationPadding;
 }
 
 static void *WatchHeapCustomReallocator(void *oldPtr, const size_t size)
 {
-    if(!GCInternalThreadData.HeapCallbackActive)
+    if(!HeapCallbackActive)
         GCCheckMemoryPadding((char *)oldPtr);
     else 
         return realloc(oldPtr, size);
 
     void *ptr = realloc((char *)oldPtr - AllocationPadding, size + AllocationPadding * 2);
     if(ptr == NULL)
-        return NULL;
+        Throw(errno, "Failed to reallocate memory");
 
     FillPadding(ptr, size);
+
+    ErrorLabel;
+    IfError
+        return NULL;
     return (char *)ptr + AllocationPadding;
 }
 
 static void WatchHeapCustomDeallocator(void *ptr)
 {
-    if(!GCInternalThreadData.HeapCallbackActive)
+    if(!HeapCallbackActive)
         GCCheckMemoryPadding((char *)ptr);
     else
         return free(ptr);
@@ -212,11 +222,11 @@ static void WatchHeapCustomDeallocator(void *ptr)
     free((char *)ptr - AllocationPadding);
 
     // Calling this here because otherwise the dictionary entry is removed too early.
-    if(!GCInternalThreadData.HeapCallbackActive)
+    if(!HeapCallbackActive)
     {
-        GCInternalThreadData.HeapCallbackActive = true;
+        HeapCallbackActive = true;
         WatchHeapFreeCallback(ptr);
-        GCInternalThreadData.HeapCallbackActive = false;
+        HeapCallbackActive = false;
     }
 }
 
@@ -270,7 +280,7 @@ void GCStopWatchingHeap()
 void *GCIterateHeap(size_t *index, GCAllocationData *data)
 {
     pthread_mutex_lock(&HeapDictMutex);
-    while(DictIterate(&HeapDict, index))
+    while(DictIterate(&HeapDict, index) != GC_RESULT_FAILURE)
     {
         if(data != NULL)
             *data = DictGetValue(&HeapDict, *index);

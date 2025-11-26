@@ -1,4 +1,4 @@
-#include "GCInternalGlobals.h"
+#include "GCInternal.h"
 #include "GCAssert.h"
 #include <stdlib.h>
 #include <stdio.h>

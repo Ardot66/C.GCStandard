@@ -1,6 +1,9 @@
 #ifndef __GC_MEMORY_DEBUG_TOOLS__
 #define __GC_MEMORY_DEBUG_TOOLS__
 
+#include <stddef.h>
+#include <stdint.h>
+
 typedef struct GCAllocationExtraPCData
 {
     size_t Count;

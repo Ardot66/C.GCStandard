@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include "GCException.h"
-#include "Tests.h"
+// #include "GCErrorInfo.h"
+// #include "Tests.h"
 size_t MetaTestsRun = 0, MetaTestsPassed = 0;
 
-void TestException();
+void TestErrorInfo();
 void TestCollections();
 void TestCommandQueue();
 void TestMemory();
@@ -11,9 +11,6 @@ void TestArena();
 
 int main()
 {
-    printf("\nTesting exception\n---\n");
-    TestException();
-
     printf("\nTesting collections\n---\n");
     TestCollections();
 

@@ -1,5 +1,5 @@
 #include "GCDictionary.h"
-#include "GCException.h"
+#include "GCResult.h"
 #include "GCMemory.h"
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +43,7 @@ static inline size_t DictGetSize(const size_t length, const size_t keySize, cons
 
 ssize_t DictIndexOfGeneric(const DictGeneric*dictionary, const void *key, const DictFunctions functions, const size_t keySize, const size_t valueSize)
 {
-    // Avoid modulo by zero exception.
+    // Avoid modulo by zero errorInfo.
     if(dictionary->Length == 0)
         return -1;
 
@@ -70,39 +70,40 @@ void DictFreeGeneric(DictGeneric *dictionary)
     GCFree(dictionary->V);
 }
 
-void DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const DictFunctions functions, const size_t keySize, const size_t valueSize)
+GCError DictResizeGeneric(DictGeneric *dictionary, const size_t newLength, const DictFunctions functions, const size_t keySize, const size_t valueSize)
 {
     DictGeneric newDictionary = DictDefault;
-    ExitInit();
 
     newDictionary.Count = 0;
     newDictionary.Length = newLength;
     newDictionary.V = GCMalloc(DictGetSize(newLength, keySize, valueSize));
+    if(newDictionary.V == NULL)
+        GotoError;
 
     memset(DictGetExistsList(&newDictionary, keySize, valueSize), 0, DictGetExistsListCount(newDictionary.Length) * sizeof(ExistsListInt));
 
-    for(size_t index = 0; DictIterateGeneric(dictionary, &index, keySize, valueSize); index++)
+    for(size_t index = 0; DictIterateGeneric(dictionary, &index, keySize, valueSize) != GC_RESULT_FAILURE; index++)
     {   
         void *key = DictGetKeyGeneric(dictionary, index, keySize, valueSize);
         void *value = DictGetValueGeneric(dictionary, index, keySize, valueSize);
 
-        DictAddGeneric(&newDictionary, key, value, functions, keySize, valueSize);
+        Try(DictAddGeneric(&newDictionary, key, value, NULL, functions, keySize, valueSize));
     }
 
-    ExitBegin();
-    IfExitException
+    ErrorLabel;
+    IfError
         GCFree(newDictionary.V);
     else
         GCFree(dictionary->V);
-    ExitEnd();
 
     *dictionary = newDictionary;
+    return Error;
 }
 
-size_t DictAddGeneric(DictGeneric *dictionary, const void *key, const void *value, const DictFunctions functions, const size_t keySize, const size_t valueSize)
+GCError DictAddGeneric(DictGeneric *dictionary, const void *key, const void *value, size_t *indexDest, const DictFunctions functions, const size_t keySize, const size_t valueSize)
 {
     if(dictionary->Length == 0 || (double)dictionary->Count / (double)dictionary->Length > DictResizeFraction)
-        DictResizeGeneric(dictionary, dictionary->Length == 0 ? DictInitialLength : dictionary->Length * 2, functions, keySize, valueSize);
+        Try(DictResizeGeneric(dictionary, dictionary->Length == 0 ? DictInitialLength : dictionary->Length * 2, functions, keySize, valueSize));
 
     uint64_t hash = functions.Hash(keySize, key);
 
@@ -123,11 +124,13 @@ size_t DictAddGeneric(DictGeneric *dictionary, const void *key, const void *valu
         }
 
         dictionary->Count += 1;
-        return checkIndex;
+        if(indexDest)
+            *indexDest = checkIndex;
+        break;
     }
 
-    Throw("Failed to add value to dictionary (this shouldn't happen)");
-    return 0;
+    ErrorLabel;
+    return Error;
 }
 
 void DictRemoveGeneric(DictGeneric *dictionary, const size_t index, const DictFunctions function, const size_t keySize, const size_t valueSize)
@@ -160,17 +163,17 @@ void DictRemoveGeneric(DictGeneric *dictionary, const size_t index, const DictFu
     dictionary->Count -= 1;
 }
 
-int DictIterateGeneric(const DictGeneric *dictionary, size_t *index, const size_t keySize, const size_t valueSize)
+GCResult DictIterateGeneric(const DictGeneric *dictionary, size_t *index, const size_t keySize, const size_t valueSize)
 {
     for(; *index < dictionary->Length; *index += 1)
     {
         if(!DictGetElementExists(dictionary, *index, keySize, valueSize))
             continue;
 
-        return 1;
+        return GC_RESULT_SUCCESS;
     }
 
-    return 0;
+    return GC_RESULT_FAILURE;
 }
 
 size_t DictDefaultHash(const size_t keySize, const void *key)
