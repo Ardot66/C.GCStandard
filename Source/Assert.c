@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <backtrace.h>
 #include <string.h>
+#include <inttypes.h>
 
 static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function)
 {
@@ -18,7 +19,7 @@ static int BacktraceCallback(void *data, uintptr_t pc, const char *filename, int
 [[__noreturn__]]
 void GCInternalAssertExit(const char *statementString, const char *file, const char *function, const uint64_t line)
 {
-    fprintf(stderr, "Assertion failed: (%s) at %s() in %s line %llu\n", statementString, function, file, line);
+    fprintf(stderr, "Assertion failed: (%s) at %s() in %s line %" PRIu64 "\n", statementString, function, file, line);
     backtrace_full(GCInternalGetBacktraceState(), 1, BacktraceCallback, NULL, NULL);
     exit(EXIT_FAILURE);
 }

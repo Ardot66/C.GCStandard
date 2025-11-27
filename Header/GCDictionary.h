@@ -3,11 +3,13 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include "GCResult.h"
 
 // Dictionaries provide an efficient way to compare large sets of data and quickly look up values.
-// They can be used to both relate keys and values, or just store keys by passing DictNoValue into 
-// the valueType of this macro. 
+// They can be used to both relate keys and values, or just store keys by passing a type of size
+// zero in the valueType parameter of this macro. No standard zero length type is provided, as
+// such types are unfortunately nonstandard.
 //
 // With the errorInfo of DictAdd, all dictionary functions work with indices obtained using
 // DictIndexOf. Such indices are only valid until any call that adds or removes from the dictionary,
@@ -15,7 +17,6 @@
 #define DictDefine(keyType, valueType, typeName) typedef struct typeName { union { struct {void *V; size_t Length; size_t Count; }; keyType *_Key; valueType *_Value;};} typeName
 
 DictDefine(void, void, DictGeneric);
-typedef struct {} DictNoValue;
 
 typedef struct DictFunctions
 {

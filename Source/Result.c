@@ -103,7 +103,7 @@ ErrorInfoCache *ErrorInfoCacheCreate()
         GotoError;
 
     cache->ErrorInfos = (GCInternalListErrorInfo)ListDefault;
-    cache->Mutex = PTHREAD_MUTEX_INITIALIZER;
+    cache->Mutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 
     // This way at least a few errorInfos are guaranteed to be captured regardless of memory issues.
     Try(ListResize(&cache->ErrorInfos, sizeof(ErrorInfoCache) * 8));

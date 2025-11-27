@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <string.h>
+#include <errno.h>
 
 #include "GCCList.h"
 #include "GCResult.h"

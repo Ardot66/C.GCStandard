@@ -3,6 +3,7 @@
 #include "GCMemory.h"
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 #define SIZE_BITS(type) (sizeof(type) * CHAR_BIT)
 typedef size_t ExistsListInt;

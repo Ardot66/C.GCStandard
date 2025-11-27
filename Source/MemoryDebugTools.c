@@ -9,16 +9,16 @@
 #include <string.h>
 #include <backtrace.h>
 #include <pthread.h>
+#include <errno.h>
 
 struct backtrace_state;
 struct backtrace_state *GCInternalGetBacktraceState();
 
-typedef void (*Func)();
-DictDefine(Func, GCAllocationData, DictFunctionAllocationData);
+DictDefine(void *, GCAllocationData, DictFunctionAllocationData);
 
 static DictFunctionAllocationData HeapDict = DictDefault;
 static size_t BacktraceCount = 0, AllocationPadding = 0;
-static pthread_mutex_t HeapDictMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+static pthread_mutex_t HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline char PaddingHash(const void *ptr, const size_t index) 
 {
@@ -217,7 +217,10 @@ static void WatchHeapCustomDeallocator(void *ptr)
     if(!HeapCallbackActive)
         GCCheckMemoryPadding((char *)ptr);
     else
-        return free(ptr);
+    {
+        free(ptr);
+        return;
+    }
 
     free((char *)ptr - AllocationPadding);
 
@@ -246,6 +249,7 @@ void GCWatchHeap(size_t backtraceCount, size_t allocationPadding)
 
     GCSetMallocCallback(WatchHeapMallocCallback);
     GCSetReallocCallback(WatchHeapReallocCallback);
+
     BacktraceCount = backtraceCount;
     AllocationPadding = allocationPadding;
 }
@@ -274,7 +278,7 @@ void GCStopWatchingHeap()
     DictFree(&HeapDict); 
     pthread_mutex_destroy(&HeapDictMutex);
     HeapDict = (DictFunctionAllocationData)DictDefault;
-    HeapDictMutex = PTHREAD_MUTEX_INITIALIZER;
+    HeapDictMutex = (pthread_mutex_t)PTHREAD_MUTEX_INITIALIZER;
 }
 
 void *GCIterateHeap(size_t *index, GCAllocationData *data)
@@ -286,7 +290,7 @@ void *GCIterateHeap(size_t *index, GCAllocationData *data)
             *data = DictGetValue(&HeapDict, *index);
 
         pthread_mutex_unlock(&HeapDictMutex);
-        return *DictGetKey(&HeapDict, *index);
+        return DictGetKey(&HeapDict, *index);
     }
     pthread_mutex_unlock(&HeapDictMutex);
 

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 // Custom functions for overriding the default malloc and free functions.
 static void *(*CustomAllocator)(const size_t size) = NULL;

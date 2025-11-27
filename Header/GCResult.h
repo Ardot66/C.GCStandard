@@ -1,6 +1,7 @@
 #ifndef __GC_RESULT__
 #define __GC_RESULT__
 
+#include <stddef.h>
 #include <stdint.h>
 
 enum GCInternalErrorInfoConstants

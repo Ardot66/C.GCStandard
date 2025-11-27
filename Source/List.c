@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include "GCList.h"
 #include "GCMemory.h"
 #include "GCResult.h"

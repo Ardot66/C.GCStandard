@@ -1,7 +1,7 @@
 #ifndef __GC_MEMORY__
 #define __GC_MEMORY__
 
-#include <stdint.h>
+#include <stddef.h>
 #include "GCResult.h"
 
 extern thread_local bool HeapCallbackActive;

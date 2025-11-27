@@ -1,36 +1,43 @@
-SHELL = bash
+ifeq ($(OS), Windows_NT)
+	LIB_BIN = ../Bin
+	SHELL = bash
+	SHARED_EXT = .dll
+	EXEC_EXT = .exe
+else
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S), Linux)
+		LIB_BIN = ~/bin
+		SHARED_EXT = .so
+	endif
+endif
 
-DEPEND = $()
-DLL_BIN = ../Bin
-BIN = Bin
-SOURCE = Source/*.c
-TESTS = Tests/*.c
+TESTS_BIN = Bin
 NAME = GCStandard
 
-DLL := $(DLL_BIN)/lib$(NAME).dll
-TESTS_EXE := $(BIN)/Tests.exe
+OBJECT := $(LIB_BIN)/lib$(NAME)$(SHARED_EXT)
+TESTS_EXE := $(TESTS_BIN)/Tests$(EXEC_EXT)
 RUN := $(TESTS_EXE)
 
-HEADERS_WILDCARD = ../*/Header
-HEADERS := $(subst $() , -I , $(wildcard $(HEADERS_WILDCARD)))
+HEADERS := Header
+COMPILE_FLAGS = -Wall -Wextra -pedantic
 
-Debug: COMPILE_FLAGS = -g
+Debug: COMPILE_FLAGS += -g
 Debug: Compile
 
-Release: COMPILE_FLAGS = -s
+Release: COMPILE_FLAGS += -s
 Release: Compile
 
 Debugger: RUN = gdb $(TESTS_EXE)
 Debugger: Debug
 
-Compile: $(DLL) $(TESTS_EXE)
+Compile: $(OBJECT) $(TESTS_EXE)
 	$(RUN)
 
-$(DLL): $(SOURCE) $(HEADERS_WILDCARD)/*.h
-	gcc -Wall -Wextra -std=c23 $(COMPILE_FLAGS) -fPIC -shared $(SOURCE) $(HEADERS) -L$(DLL_BIN) -lbacktrace $(subst $() , -l,$(DEPEND)) -o $(DLL)
+$(OBJECT): Source/*.c $(HEADERS)/*.h
+	gcc $(COMPILE_FLAGS) -fPIC -shared Source/*.c -I $(HEADERS) -lbacktrace -lm -o $(OBJECT)
 
-$(TESTS_EXE): $(DLL) $(TESTS) $(HEADERS_WILDCARD)/*.h
-	gcc -Wall -Wextra -std=c23 $(COMPILE_FLAGS) $(TESTS) $(HEADERS) -L $(DLL_BIN) -l$(NAME) $(subst $() , -l,$(DEPEND)) -o $(TESTS_EXE)
+$(TESTS_EXE): $(OBJECT) Tests/*.c $(HEADERS)/*.h
+	gcc $(COMPILE_FLAGS) Tests/*.c -I $(HEADERS) -L $(LIB_BIN) -l$(NAME) -o $(TESTS_EXE)
 
 Clean:
-	rm $(TESTS_EXE) $(DLL)
+	rm -f $(TESTS_EXE) $(OBJECT)
