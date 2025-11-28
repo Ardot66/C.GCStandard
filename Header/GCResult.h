@@ -56,7 +56,7 @@ if(0) goto GCInternalErrorLabel // This avoids an annoying unused label warning
 
 // Throws an error, jumping to the error label in the process. Should only be used for more serious errors,
 // not in cases where a function is returning an expected value.
-#define Throw(code, ...) do { GCInternalSetErrorInfo(__FILE__, __func__, __LINE__, code, (const char *[]){__VA_ARGS__ "", NULL}); goto GCInternalErrorLabel; } while (0)
+#define Throw(code, ...) do { GCInternalSetErrorInfo(__FILE__, __func__, __LINE__, code, (const char *[]){"" __VA_ARGS__, NULL}); goto GCInternalErrorLabel; } while (0)
 
 // This type should be used if a function can only succeed or cause a serious error.
 typedef enum GCError
