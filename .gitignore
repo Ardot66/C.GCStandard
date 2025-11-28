@@ -1,3 +1,4 @@
 .vscode/*
 Bin/*
-!Bin/.gitkeep
+Lib/*
+!*/.gitkeep
