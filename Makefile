@@ -30,7 +30,7 @@ Release: Compile
 Debugger: RUN = gdb $(TESTS_EXE)
 Debugger: Debug
 
-Compile: $(OBJECT) Stow $(TESTS_EXE)
+Compile: $(OBJECT) $(TESTS_EXE)
 	$(RUN)
 
 $(OBJECT): Source/*.c $(HEADERS)/*.h
