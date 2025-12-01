@@ -65,7 +65,12 @@ GCError CListInsertRangeGeneric(CListGeneric *list, const void *range, const siz
         Throw(EINVAL, "Cannot insert elements past the end of a list");
 
     if(list->Count + rangeCount > list->Length)
-        Try(CListResizeGeneric(list, list->Length == 0 ? 16 : list->Length * 2, elemSize));
+    {
+        size_t newLength = list->Length == 0 ? 16 : list->Length;
+        while(newLength < list->Count + rangeCount)
+            newLength *= 2;
+        Try(CListResizeGeneric(list, newLength, elemSize));
+    }
 
     // Testing if displaced elements should be pushed forwards or backwards, depending on what would be more efficient.
     if(index + (rangeCount >> 1) < list->Count >> 1)
