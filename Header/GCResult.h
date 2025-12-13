@@ -51,8 +51,11 @@ if(0) goto GCInternalErrorLabel // This avoids an annoying unused label warning
 #define ErrorCase case GC_ERROR: goto GCInternalErrorLabel
 
 // Convenience macro that jumps to the error label if the contained statement produces a non-zero value.
-// Should only really be used to wrap conditionals like myVar == NULL or functions that return GCError.
+// Should only really be used to wrap functions that return GCError.
 #define Try(statement) if((statement) == GC_ERROR) goto GCInternalErrorLabel
+
+// Convenience macro that works like Try, but jumps if the contained statement evaluates to NULL.
+#define TryValid(statement) if((statement) == NULL) GotoError
 
 // Throws an error, jumping to the error label in the process. Should only be used for more serious errors,
 // not in cases where a function is returning an expected value.
